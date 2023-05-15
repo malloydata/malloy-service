@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package malloy.services.v1;
+
+service Compiler {
+    rpc Compile (CompileRequest) returns (CompileResponse) {}
+
+    rpc CompileStream(stream CompileRequest) returns (stream CompilerRequest) {}
+}
+
+message CompileRequest {
+  enum Type {
+    COMPILE = 0;
+    REFERENCES = 1;
+    TABLE_SCHEMAS = 2;
+    SQL_BLOCK_SCHEMAS = 3;
+  }
+  CompileRequest.Type type = 1;
+
+
+  CompileDocument document = 2;
+  repeated CompileDocument references = 3;
+  string schema = 4;
+  repeated SqlBlockSchema sql_block_schemas = 5;
+  
+  string query = 6;
+  string named_query = 7;
+}
+
+message CompileResponse {
+  string model = 1;
+  string sql = 2;
+}
+
+message CompileDocument {
+  string url = 1;
+  string content = 2;
+}
+
+message CompilerRequest {
+  enum Type {
+    UNKNOWN = 0;
+    IMPORT = 1;
+    TABLE_SCHEMAS = 2;
+    SQL_BLOCK_SCHEMAS = 3;
+    COMPLETE = 4;
+  }
+
+  CompilerRequest.Type type = 1;
+  repeated string import_urls = 2;
+  repeated string table_schemas = 3;
+  SqlBlock sql_block = 4;
+
+  string content = 99;
+}
+
+message SqlBlock {
+  string name = 1;
+  string sql = 2;
+}
+
+message SqlBlockSchema {
+  string name = 1;
+  string sql = 2;
+  string schema = 3;
+}

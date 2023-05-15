@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "rootDir": "src",
+        "outDir": "dist",
+        "allowJs": false,
+        "declaration": true,
+        "composite": true,
+        "strict": true,
+        "noImplicitAny": false,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "lib": [
+          "es2019",
+          "es2020.bigint",
+          "es2020.string",
+          "es2020.symbol.wellknown",
+          "dom"
+        ],
+        "module": "commonjs",
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        "isolatedModules": true,
+        "target": "es2019",
+        "experimentalDecorators": true,
+        "sourceMap": true,
+        "useUnknownInCatchVariables": false,
+        "forceConsistentCasingInFileNames": true
+      },
+    "include": ["./src"],
+  }
