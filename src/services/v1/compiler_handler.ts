@@ -159,7 +159,7 @@ class CompilerHandler implements ICompilerServer {
       //     });
       // }
 
-      function runtime_methods() {
+      const runtime_methods = () => {
         console.log('######## RUNNING USING MALLOY RUNTIME ########');
         const runtime = new Runtime(compilerURLReader, compilerRuntime);
         runtime
@@ -187,7 +187,7 @@ class CompilerHandler implements ICompilerServer {
             console.log(error);
             callback({code: grpc.status.INTERNAL, message: error});
           });
-      }
+      };
 
       // function runtime_methods_different_load() {
       //   console.log('######## RUNNING USING MALLOY RUNTIME ########');
@@ -350,7 +350,10 @@ class CompilerRuntime implements LookupConnection<Connection>, Connection {
     throw new Error('Method not implemented.');
   };
 
-  runSQL = async (sql: string, options?: unknown): Promise<MalloyQueryData> => {
+  runSQL = async (
+    _sql: string,
+    _options?: unknown
+  ): Promise<MalloyQueryData> => {
     console.log('ERROR: runSQL() called.');
     throw new Error('Method not implemented.');
   };
@@ -393,7 +396,7 @@ class CompilerRuntime implements LookupConnection<Connection>, Connection {
     return {schemas: this.schemas, errors: {}};
   }
 
-  fetchSchemaForSQLBlocks(sqlStructs: SQLBlock[]): Promise<{
+  fetchSchemaForSQLBlocks(_sqlStructs: SQLBlock[]): Promise<{
     schemas: Record<string, StructDef>;
     errors: Record<string, string>;
   }> {
@@ -407,7 +410,7 @@ class CompilerRuntime implements LookupConnection<Connection>, Connection {
   }
 
   lookupConnection = async (
-    connectionName?: string | undefined
+    _connectionName?: string | undefined
   ): Promise<Connection> => {
     console.log('lookupConnection() called.');
     return this as Connection;
@@ -420,13 +423,14 @@ export default {
 };
 
 class MissingReferenceError extends Error {}
-class MissingTableSchemasError extends Error {
-  public tables: string[];
-  constructor(tables: string[]) {
-    super();
-    this.tables = tables;
-  }
-}
+
+// class MissingTableSchemasError extends Error {
+//   public tables: string[];
+//   constructor(tables: string[]) {
+//     super();
+//     this.tables = tables;
+//   }
+// }
 
 class StreamingCompileURLReader implements URLReader {
   private doc_cache = new Map<string, string>();
@@ -489,7 +493,10 @@ class StreamingCompileConnection implements Connection {
   private sql_block_cache = new Map<string, StructDef>();
   private default_connection = 'default_connection';
 
-  runSQL = async (sql: string, options?: unknown): Promise<MalloyQueryData> => {
+  runSQL = async (
+    _sql: string,
+    _options?: unknown
+  ): Promise<MalloyQueryData> => {
     console.log('ERROR: runSQL() called.');
     throw new Error('Method not implemented.');
   };
@@ -547,7 +554,7 @@ class StreamingCompileConnection implements Connection {
     return result;
   }
 
-  fetchSchemaForSQLBlocks(sqlStructs: SQLBlock[]): Promise<{
+  fetchSchemaForSQLBlocks(_sqlStructs: SQLBlock[]): Promise<{
     schemas: Record<string, StructDef>;
     errors: Record<string, string>;
   }> {
