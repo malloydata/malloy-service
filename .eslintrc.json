@@ -8,7 +8,8 @@
     "node_modules/",
     "dist/",
     "build/",
-    "pkg"
+    "pkg",
+    "src/services/v1/**/*.js"
   ],
   "rules": {
     "no-console": "off",
@@ -40,9 +41,6 @@
       "warn",
       {"prefer": "parameter-property"}
     ],
-    "quote-props": [
-      "error",
-      "consistent"
-    ]
+    "quote-props": ["error", "consistent"]
   }
 }
