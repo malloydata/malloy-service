@@ -70,6 +70,7 @@ message CompilerRequest {
   repeated string import_urls = 2;
   repeated string table_schemas = 3;
   SqlBlock sql_block = 4;
+  repeated string connections = 5;
 
   string content = 99;
 }

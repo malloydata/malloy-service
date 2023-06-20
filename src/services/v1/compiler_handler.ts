@@ -102,10 +102,8 @@ class CompilerHandler implements ICompilerServer {
         })
         .then(query => query.preparedResult.sql)
         .then(sql => {
-          const connections = connection.connectionNames.map(
-            connectionName => `-- connection: ${connectionName}\n`
-          );
-          response.setContent(`${connections}${sql}`);
+          response.setConnectionsList(connection.connectionNames);
+          response.setContent(sql);
         })
         .then(() => response.setType(CompilerRequest.Type.COMPLETE))
         .catch(error => this.mapErrorToResponse(response, error))
