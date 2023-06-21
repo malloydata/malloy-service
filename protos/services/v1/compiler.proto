@@ -43,7 +43,6 @@ message CompileRequest {
   repeated CompileDocument references = 3;
   string schema = 4;
   repeated SqlBlockSchema sql_block_schemas = 5;
-
   string query = 6;
   string named_query = 7;
 }
