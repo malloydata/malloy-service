@@ -121,6 +121,10 @@ export class CompilerRequest extends jspb.Message {
     clearSqlBlock(): void;
     getSqlBlock(): SqlBlock | undefined;
     setSqlBlock(value?: SqlBlock): CompilerRequest;
+    clearConnectionsList(): void;
+    getConnectionsList(): Array<string>;
+    setConnectionsList(value: Array<string>): CompilerRequest;
+    addConnections(value: string, index?: number): string;
     getContent(): string;
     setContent(value: string): CompilerRequest;
 
@@ -140,6 +144,7 @@ export namespace CompilerRequest {
         importUrlsList: Array<string>,
         tableSchemasList: Array<string>,
         sqlBlock?: SqlBlock.AsObject,
+        connectionsList: Array<string>,
         content: string,
     }
 

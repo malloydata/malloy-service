@@ -7,6 +7,7 @@ import {
   MalloyQueryData,
   SQLBlock,
   StructDef,
+  parseTableURI,
 } from '@malloydata/malloy';
 import {CompilerService, ICompilerServer} from './compiler_grpc_pb';
 import {
@@ -100,7 +101,10 @@ class CompilerHandler implements ICompilerServer {
           }
         })
         .then(query => query.preparedResult.sql)
-        .then(sql => response.setContent(sql))
+        .then(sql => {
+          response.setConnectionsList(connection.connectionNames);
+          response.setContent(sql);
+        })
         .then(() => response.setType(CompilerRequest.Type.COMPLETE))
         .catch(error => this.mapErrorToResponse(response, error))
         .finally(() => {
@@ -128,85 +132,30 @@ class CompilerHandler implements ICompilerServer {
       const modelUrl = new URL(call.request.getDocument()!.getUrl());
       const compilerRuntime = new CompilerRuntime(call.request);
       const compilerURLReader = new CompilerURLReader(call.request);
-
-      // function malloy_dot_methods() {
-      //   console.log('######## RUNNING USING MALLOY DOT METHODS ########');
-      //   Malloy.parse({
-      //     url: modelUrl,
-      //     urlReader: compilerURLReader,
-      //   })
-      //     .then(parse => {
-      //       console.log('parsed...');
-      //       return Malloy.compile({
-      //         urlReader: compilerURLReader,
-      //         connections: compilerRuntime,
-      //         parse: parse,
-      //       });
-      //     })
-      //     .then(model => {
-      //       console.log('compiled...');
-      //       console.log(JSON.stringify(model, null, 2));
-      //       response.setModel(JSON.stringify(model));
-      //       response.setSql(
-      //         model.getPreparedQueryByName(call.request.getQuery())
-      //           .preparedResult.sql
-      //       );
-      //       callback(null, response);
-      //     })
-      //     .catch(error => {
-      //       console.log(error);
-      //       callback({code: grpc.status.INTERNAL, message: error});
-      //     });
-      // }
-
-      const runtime_methods = () => {
-        console.log('######## RUNNING USING MALLOY RUNTIME ########');
-        const runtime = new Runtime(compilerURLReader, compilerRuntime);
-        runtime
-          .loadModel(modelUrl)
-          .getModel()
-          .then(model => {
-            // console.log(`Model loaded...`);
-            // console.log(JSON.stringify(model, null, 2));
-            response.setModel(JSON.stringify(model));
-          })
-          .then(() =>
-            runtime.loadQueryByName(modelUrl, call.request.getQuery())
-          )
-          .then(query => query.getSQL())
-          .then(sql => {
-            // console.log(`sql: ${JSON.stringify(query)}`);
-            response.setSql(sql);
-          })
-          .then(() => {
-            // console.log("Response:");
-            // console.log(JSON.stringify(response, null, 2));
-            callback(null, response);
-          })
-          .catch(error => {
-            console.log(error);
-            callback({code: grpc.status.INTERNAL, message: error});
-          });
-      };
-
-      // function runtime_methods_different_load() {
-      //   console.log('######## RUNNING USING MALLOY RUNTIME ########');
-      //   const runtime = new Runtime(compilerURLReader, compilerRuntime);
-      //   runtime
-      //     .loadQueryByName(modelUrl, call.request.getQuery())
-      //     .getSQL()
-      //     .then(sql => {
-      //       response.setSql(sql);
-      //       callback(null, response);
-      //     })
-      //     .catch(error => {
-      //       console.log(error);
-      //       callback({code: grpc.status.INTERNAL, message: error});
-      //     });
-      // }
-      // malloy_dot_methods();
-      runtime_methods();
-      // runtime_methods_different_load();
+      const runtime = new Runtime(compilerURLReader, compilerRuntime);
+      runtime
+        .loadModel(modelUrl)
+        .getModel()
+        .then(model => {
+          // console.log(`Model loaded...`);
+          // console.log(JSON.stringify(model, null, 2));
+          response.setModel(JSON.stringify(model));
+        })
+        .then(() => runtime.loadQueryByName(modelUrl, call.request.getQuery()))
+        .then(query => query.getSQL())
+        .then(sql => {
+          // console.log(`sql: ${JSON.stringify(query)}`);
+          response.setSql(sql);
+        })
+        .then(() => {
+          // console.log("Response:");
+          // console.log(JSON.stringify(response, null, 2));
+          callback(null, response);
+        })
+        .catch(error => {
+          console.log(error);
+          callback({code: grpc.status.INTERNAL, message: error});
+        });
     } catch (ex) {
       console.log(ex);
       callback({
@@ -318,6 +267,8 @@ class CompilerURLReader implements URLReader {
 }
 
 class CompilerRuntime implements LookupConnection<Connection>, Connection {
+  readonly name = 'compiler_runtime';
+
   private request: CompileRequest;
   private schemas: Record<string, StructDef>;
 
@@ -333,11 +284,6 @@ class CompilerRuntime implements LookupConnection<Connection>, Connection {
       console.warn('Error parsing schema');
       console.warn(ex);
     }
-  }
-
-  close(): Promise<void> {
-    console.log('ERROR: close() called.');
-    throw new Error('Method not implemented.');
   }
 
   fetchSchemaForSQLBlock = async (
@@ -358,30 +304,16 @@ class CompilerRuntime implements LookupConnection<Connection>, Connection {
     throw new Error('Method not implemented.');
   };
 
-  isPool = async (): Promise<Boolean> => {
-    console.log('ERROR: isPool() called.');
-    throw new Error('Method not implemented.');
-  };
+  isPool = async (): Promise<Boolean> => false;
 
-  canPersist = async (): Promise<Boolean> => {
-    console.log('ERROR: canPersist() called.');
-    throw new Error('Method not implemented.');
-  };
+  canPersist = async (): Promise<Boolean> => false;
 
-  canFetchSchemaAndRunSimultaneously = async (): Promise<Boolean> => {
-    console.log('ERROR: canFetchSchemaAndRunSimultaneously() called.');
-    throw new Error('Method not implemented.');
-  };
+  canFetchSchemaAndRunSimultaneously = async (): Promise<Boolean> => false;
 
-  canStream = async (): Promise<Boolean> => {
-    console.log('ERROR: canStream() called.');
-    throw new Error('Method not implemented.');
-  };
+  canStream = async (): Promise<Boolean> => false;
 
-  canFetchSchemaAndRunStreamSimultaneously = async (): Promise<Boolean> => {
-    console.log('ERROR: canFetchSchemaAndRunStreamSimultaneously() called.');
-    throw new Error('Method not implemented.');
-  };
+  canFetchSchemaAndRunStreamSimultaneously = async (): Promise<Boolean> =>
+    false;
 
   async fetchSchemaForTables(tables: string[]): Promise<{
     schemas: Record<string, StructDef>;
@@ -404,17 +336,14 @@ class CompilerRuntime implements LookupConnection<Connection>, Connection {
     throw new Error('Method not implemented.');
   }
 
-  get name(): string {
-    console.log('ERROR: name() called.');
-    throw new Error('Method not implemented.');
-  }
-
   lookupConnection = async (
     _connectionName?: string | undefined
   ): Promise<Connection> => {
     console.log('lookupConnection() called.');
-    return this as Connection;
+    return this;
   };
+
+  async close(): Promise<void> {}
 }
 
 export default {
@@ -465,10 +394,13 @@ class StreamingCompileURLReader implements URLReader {
 }
 
 class StreamingCompileConnection implements Connection {
-  close(): Promise<void> {
-    console.log('ERROR: close() called.');
-    throw new Error('Method not implemented.');
-  }
+  readonly name = 'streaming_compile';
+
+  private table_schema_cache = new Map<string, StructDef>();
+  private sql_block_cache = new Map<string, StructDef>();
+  private default_connection = 'default_connection';
+  private _connections: string[] = [];
+
   fetchSchemaForSQLBlock = async (
     block: SQLBlock
   ): Promise<
@@ -489,9 +421,6 @@ class StreamingCompileConnection implements Connection {
       };
     }
   };
-  private table_schema_cache = new Map<string, StructDef>();
-  private sql_block_cache = new Map<string, StructDef>();
-  private default_connection = 'default_connection';
 
   runSQL = async (
     _sql: string,
@@ -501,30 +430,16 @@ class StreamingCompileConnection implements Connection {
     throw new Error('Method not implemented.');
   };
 
-  isPool = async (): Promise<Boolean> => {
-    console.log('ERROR: isPool() called.');
-    throw new Error('Method not implemented.');
-  };
+  isPool = async (): Promise<Boolean> => false;
 
-  canPersist = async (): Promise<Boolean> => {
-    console.log('ERROR: canPersist() called.');
-    throw new Error('Method not implemented.');
-  };
+  canPersist = async (): Promise<Boolean> => false;
 
-  canFetchSchemaAndRunSimultaneously = async (): Promise<Boolean> => {
-    console.log('ERROR: canFetchSchemaAndRunSimultaneously() called.');
-    throw new Error('Method not implemented.');
-  };
+  canFetchSchemaAndRunSimultaneously = async (): Promise<Boolean> => false;
 
-  canStream = async (): Promise<Boolean> => {
-    console.log('ERROR: canStream() called.');
-    throw new Error('Method not implemented.');
-  };
+  canStream = async (): Promise<Boolean> => false;
 
-  canFetchSchemaAndRunStreamSimultaneously = async (): Promise<Boolean> => {
-    console.log('ERROR: canFetchSchemaAndRunStreamSimultaneously() called.');
-    throw new Error('Method not implemented.');
-  };
+  canFetchSchemaAndRunStreamSimultaneously = async (): Promise<Boolean> =>
+    false;
 
   async fetchSchemaForTables(tables: string[]): Promise<{
     schemas: Record<string, StructDef>;
@@ -562,14 +477,13 @@ class StreamingCompileConnection implements Connection {
     throw new Error('Method not implemented.');
   }
 
-  get name(): string {
-    console.log('ERROR: name() called.');
-    throw new Error('Method not implemented.');
-  }
-
   addTableSchema = (name: string, schema: StructDef): void => {
-    if (name.startsWith(this.default_connection)) {
-      name = name.substring(this.default_connection.length + 1);
+    const {connectionName, tablePath} = parseTableURI(name);
+
+    if (connectionName === this.default_connection) {
+      name = tablePath;
+    } else if (connectionName) {
+      this._connections.push(connectionName);
     }
     this.table_schema_cache.set(name, schema);
   };
@@ -580,4 +494,10 @@ class StreamingCompileConnection implements Connection {
       JSON.parse(sqlBlock.getSchema()) as StructDef
     );
   };
+
+  get connectionNames() {
+    return this._connections;
+  }
+
+  async close(): Promise<void> {}
 }

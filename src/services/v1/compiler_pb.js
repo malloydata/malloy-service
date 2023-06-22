@@ -875,7 +875,7 @@ proto.malloy.services.v1.CompileDocument.prototype.setContent = function(value) 
  * @private {!Array<number>}
  * @const
  */
-proto.malloy.services.v1.CompilerRequest.repeatedFields_ = [2,3];
+proto.malloy.services.v1.CompilerRequest.repeatedFields_ = [2,3,5];
 
 
 
@@ -912,6 +912,7 @@ proto.malloy.services.v1.CompilerRequest.toObject = function(includeInstance, ms
     importUrlsList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
     tableSchemasList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
     sqlBlock: (f = msg.getSqlBlock()) && proto.malloy.services.v1.SqlBlock.toObject(includeInstance, f),
+    connectionsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
     content: jspb.Message.getFieldWithDefault(msg, 99, "")
   };
 
@@ -965,6 +966,10 @@ proto.malloy.services.v1.CompilerRequest.deserializeBinaryFromReader = function(
       var value = new proto.malloy.services.v1.SqlBlock;
       reader.readMessage(value,proto.malloy.services.v1.SqlBlock.deserializeBinaryFromReader);
       msg.setSqlBlock(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addConnections(value);
       break;
     case 99:
       var value = /** @type {string} */ (reader.readString());
@@ -1026,6 +1031,13 @@ proto.malloy.services.v1.CompilerRequest.serializeBinaryToWriter = function(mess
       4,
       f,
       proto.malloy.services.v1.SqlBlock.serializeBinaryToWriter
+    );
+  }
+  f = message.getConnectionsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      5,
+      f
     );
   }
   f = message.getContent();
@@ -1175,6 +1187,43 @@ proto.malloy.services.v1.CompilerRequest.prototype.clearSqlBlock = function() {
  */
 proto.malloy.services.v1.CompilerRequest.prototype.hasSqlBlock = function() {
   return jspb.Message.getField(this, 4) != null;
+};
+
+
+/**
+ * repeated string connections = 5;
+ * @return {!Array<string>}
+ */
+proto.malloy.services.v1.CompilerRequest.prototype.getConnectionsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 5));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.malloy.services.v1.CompilerRequest} returns this
+ */
+proto.malloy.services.v1.CompilerRequest.prototype.setConnectionsList = function(value) {
+  return jspb.Message.setField(this, 5, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.malloy.services.v1.CompilerRequest} returns this
+ */
+proto.malloy.services.v1.CompilerRequest.prototype.addConnections = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 5, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.malloy.services.v1.CompilerRequest} returns this
+ */
+proto.malloy.services.v1.CompilerRequest.prototype.clearConnectionsList = function() {
+  return this.setConnectionsList([]);
 };
 
 
