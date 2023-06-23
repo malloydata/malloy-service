@@ -13,7 +13,7 @@
     "protos-gen-ts": "npx grpc_tools_node_protoc --plugin=protoc-gen-ts=$(which protoc-gen-ts) --ts_out=src -I protos protos/**/**/*.proto",
     "lint": "gts lint",
     "clean": "gts clean",
-    "compile": "tsc",
+    "compile": "npm run build",
     "fix": "gts fix",
     "prepare": "npm run compile",
     "pretest": "npm run compile",
