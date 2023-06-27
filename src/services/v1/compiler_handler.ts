@@ -35,12 +35,13 @@ import {
   // eslint-disable-next-line node/no-unpublished-import
 } from './compiler_pb';
 
+import {CompilerRuntime} from './compiler_runtime';
+import {CompilerURLReader} from './compiler_urlreader';
 import {StreamingCompileConnection} from './streaming_compile_connection';
 import {
-  StreamingCompileURLReader,
   MissingReferenceError,
+  StreamingCompileURLReader,
 } from './streaming_compile_urlreader';
-import {CompilerRuntime} from './compiler_runtime';
 
 class CompilerHandler implements ICompilerServer {
   compileStream = (
