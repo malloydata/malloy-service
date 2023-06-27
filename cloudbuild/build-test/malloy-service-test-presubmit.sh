@@ -5,6 +5,7 @@ nix-shell --quiet --pure --command "$(cat <<NIXCMD
   set -euxo pipefail
   cd /workspace
   npm ci --silent
+  npm run build
   npm run lint
 NIXCMD
 )"

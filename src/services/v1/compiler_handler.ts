@@ -9,6 +9,8 @@ import {
   StructDef,
   parseTableURI,
 } from '@malloydata/malloy';
+// Import from auto-generated file
+// eslint-disable-next-line node/no-unpublished-import
 import {CompilerService, ICompilerServer} from './compiler_grpc_pb';
 import {
   CompileDocument,
@@ -17,6 +19,8 @@ import {
   CompilerRequest,
   SqlBlock,
   SqlBlockSchema,
+  // Import from auto-generated file
+  // eslint-disable-next-line node/no-unpublished-import
 } from './compiler_pb';
 
 class CompilerHandler implements ICompilerServer {

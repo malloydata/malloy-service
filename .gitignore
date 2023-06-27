@@ -4,3 +4,5 @@ dist
 bin
 pkg
 tsconfig.tsbuildinfo
+*_pb.d.ts
+*_pb.js
