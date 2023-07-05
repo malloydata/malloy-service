@@ -31,7 +31,7 @@ import {CompileRequest} from './compiler_pb';
 export class CompilerURLReader implements URLReader {
   private request: CompileRequest;
 
-  private log = debug('mallloydata:compile_url_reader');
+  private log = debug('malloydata:compile_url_reader');
 
   constructor(request: CompileRequest) {
     this.request = request;
