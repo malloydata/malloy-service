@@ -22,7 +22,8 @@
  */
 
 import * as grpc from '@grpc/grpc-js';
-import {Runtime, StructDef} from '@malloydata/malloy';
+import debug from 'debug';
+import {MalloyError, Runtime, StructDef} from '@malloydata/malloy';
 // Import from auto-generated file
 // eslint-disable-next-line node/no-unpublished-import
 import {CompilerService, ICompilerServer} from './compiler_grpc_pb';
@@ -37,31 +38,33 @@ import {
 
 import {CompilerRuntime} from './compiler_runtime';
 import {CompilerURLReader} from './compiler_urlreader';
-import {StreamingCompileConnection} from './streaming_compile_connection';
+import {StreamingCompileLookupConnection} from './streaming_compile_lookup_connection';
 import {
   MissingReferenceError,
   StreamingCompileURLReader,
 } from './streaming_compile_urlreader';
 
 class CompilerHandler implements ICompilerServer {
+  log = debug('malloydata:compile_handler');
+
   compileStream = (
     call: grpc.ServerDuplexStream<CompileRequest, CompilerRequest>
   ): void => {
-    console.log('compileStream Called');
+    this.log('compileStream Called');
     const urlReader = new StreamingCompileURLReader();
-    const connection = new StreamingCompileConnection();
-    const runtime = new Runtime(urlReader, connection);
+    const lookupConnection = new StreamingCompileLookupConnection();
+    const runtime = new Runtime(urlReader, lookupConnection);
     let modelUrl: URL | undefined = undefined;
     let query = '';
     let queryType = 'unknown';
     call.on('data', (request: CompileRequest) => {
-      console.log('compile stream data received');
+      this.log('compile stream data received');
       const response = new CompilerRequest();
       response.setType(CompilerRequest.Type.UNKNOWN);
 
       switch (request.getType()) {
         case CompileRequest.Type.COMPILE: {
-          console.log('COMPILE received');
+          this.log('COMPILE received');
           const document = request.getDocument();
           if (document === undefined) {
             response.setContent('Document must be defined for compile request');
@@ -81,23 +84,38 @@ class CompilerHandler implements ICompilerServer {
           break;
         }
         case CompileRequest.Type.REFERENCES:
-          console.log('REFERENCES received');
+          this.log('REFERENCES received');
           urlReader.addDocs(request.getReferencesList());
           break;
         case CompileRequest.Type.TABLE_SCHEMAS: {
-          console.log('TABLE SCHEMAS received');
           const rawJson = JSON.parse(request.getSchema());
-          for (const [name, schema] of Object.entries(rawJson['schemas'])) {
-            connection.addTableSchema(name, schema as StructDef);
+          this.log('TABLE SCHEMAS received', Object.keys(rawJson['schemas']));
+          for (const [key, schema] of Object.entries(rawJson['schemas']) as [
+            string,
+            StructDef
+          ][]) {
+            if (schema.structRelationship.type === 'basetable') {
+              const connection = lookupConnection.getConnection(
+                schema.structRelationship.connectionName
+              );
+              connection.addTableSchema(key, schema);
+            }
           }
           break;
         }
         case CompileRequest.Type.SQL_BLOCK_SCHEMAS:
-          console.log('SQL BLOCK SCHEMAS received');
+          this.log('SQL BLOCK SCHEMAS received');
           // eslint-disable-next-line no-case-declarations
           const sql_blocks = request.getSqlBlockSchemasList();
           for (const sql_block of sql_blocks) {
-            connection.addSqlBlockSchema(sql_block);
+            const name = sql_block.getName();
+            const schema = JSON.parse(sql_block.getSchema()) as StructDef;
+            if (schema.structRelationship.type === 'basetable') {
+              const connection = lookupConnection.getConnection(
+                schema.structRelationship.connectionName
+              );
+              connection.addSqlBlockSchema(name, schema);
+            }
           }
           break;
       }
@@ -124,9 +142,8 @@ class CompilerHandler implements ICompilerServer {
               throw new Error(`Unhandled query type: ${queryType}`);
           }
         })
-        .then(query => query.preparedResult.sql)
-        .then(sql => {
-          response.setConnectionsList(connection.connectionNames);
+        .then(({preparedResult: {sql, connectionName}}) => {
+          response.setConnection(connectionName);
           response.setContent(sql);
         })
         .then(() => response.setType(CompilerRequest.Type.COMPLETE))
@@ -136,7 +153,7 @@ class CompilerHandler implements ICompilerServer {
         });
     });
     call.on('end', () => {
-      console.log('compile session ended');
+      this.log('compile session ended');
     });
   };
   compile = (
@@ -161,27 +178,27 @@ class CompilerHandler implements ICompilerServer {
         .loadModel(modelUrl)
         .getModel()
         .then(model => {
-          // console.log(`Model loaded...`);
-          // console.log(JSON.stringify(model, null, 2));
+          // this.log(`Model loaded...`);
+          // this.log(JSON.stringify(model, null, 2));
           response.setModel(JSON.stringify(model));
         })
         .then(() => runtime.loadQueryByName(modelUrl, call.request.getQuery()))
         .then(query => query.getSQL())
         .then(sql => {
-          // console.log(`sql: ${JSON.stringify(query)}`);
+          // this.log(`sql: ${JSON.stringify(query)}`);
           response.setSql(sql);
         })
         .then(() => {
-          // console.log("Response:");
-          // console.log(JSON.stringify(response, null, 2));
+          // this.log("Response:");
+          // this.log(JSON.stringify(response, null, 2));
           callback(null, response);
         })
         .catch(error => {
-          console.log(error);
+          this.log(error);
           callback({code: grpc.status.INTERNAL, message: error});
         });
     } catch (ex) {
-      console.log(ex);
+      this.log(ex);
       callback({
         code: grpc.status.INTERNAL,
         message: 'An internal error has occurred',
@@ -198,68 +215,78 @@ class CompilerHandler implements ICompilerServer {
     return errors;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private mapErrorToResponse(response: CompilerRequest, error: any) {
+  private mapErrorToResponse(response: CompilerRequest, error: unknown) {
     if (error instanceof MissingReferenceError) {
       response.setType(CompilerRequest.Type.IMPORT);
       response.addImportUrls(error.message);
       return;
     }
 
-    if (error.log && error.log[0] && error.log[0].message) {
+    if (error instanceof MalloyError) {
+      this.log('mapErrorToResponse', error.problems[0].message);
+
       const importRegex = new RegExp(/^import error: mlr:\/\/(.+)$/);
-      if (importRegex.test(error.log[0].message)) {
+      if (importRegex.test(error.problems[0].message)) {
         response.setType(CompilerRequest.Type.IMPORT);
-        for (const log of error.log) {
-          const matches = log.message.match(importRegex);
-          if (matches.length > 0) {
+        for (const problem of error.problems) {
+          const matches = problem.message.match(importRegex);
+          if (matches && matches.length > 0) {
             response.addImportUrls(matches[1]);
           } else {
-            // console.warn(`Processing import errors, ignoring: ${log.message}`);
+            console.error(
+              `Processing import errors, ignoring: ${problem.message}`
+            );
           }
         }
-        // console.log(response);
+        this.log('mapToErrorResponse importUrls', response.getImportUrlsList());
         return;
       }
 
       const schemaRegex = new RegExp(/^No schema data available for {(.+)}$/);
-      if (schemaRegex.test(error.log[0].message)) {
+      if (schemaRegex.test(error.problems[0].message)) {
         response.setType(CompilerRequest.Type.TABLE_SCHEMAS);
-        for (const log of error.log) {
-          const matches = log.message.match(schemaRegex);
+        for (const problem of error.problems) {
+          const matches = problem.message.match(schemaRegex);
           if (matches && matches.length > 0) {
             response.addTableSchemas(matches[1]);
           } else {
-            // console.warn(`Processing table schemas, ignoring: ${log.message}`);
+            console.error(
+              `Processing table schemas, ignoring: ${problem.message}`
+            );
           }
         }
-        console.log(response.getTableSchemasList());
+        this.log(
+          'mapToErrorResponse tableSchemas',
+          response.getTableSchemasList()
+        );
         return;
       }
 
       const sqlBlockRegex = new RegExp(
         /SQL Block schema missing: \[\[(.+)\]\]{(.+)}$/s
       );
-      if (sqlBlockRegex.test(error.log[0].message)) {
+      if (sqlBlockRegex.test(error.problems[0].message)) {
         response.setType(CompilerRequest.Type.SQL_BLOCK_SCHEMAS);
-        for (const log of error.log) {
-          const matches = log.message.match(sqlBlockRegex);
+        for (const problem of error.problems) {
+          const matches = problem.message.match(sqlBlockRegex);
           if (matches && matches.length > 0) {
             const sqlBlock = new SqlBlock();
             sqlBlock.setName(matches[1]);
             sqlBlock.setSql(matches[2]);
             response.setSqlBlock(sqlBlock);
           } else {
-            // console.warn(`Processing sql block schemas, ignoring: ${log.message}`);
+            console.error(
+              `Processing sql block schemas, ignoring: ${problem.message}`
+            );
           }
         }
-        // console.log(response);
+        // this.log(response);
         return;
       }
     }
 
     response.setType(CompilerRequest.Type.UNKNOWN);
-    response.setContent(error.message);
+    response.setContent((error as Error).toString());
   }
 }
 

@@ -21,25 +21,22 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import debug from 'debug';
 import {
   Connection,
   MalloyQueryData,
+  QueryRunStats,
   SQLBlock,
   StructDef,
-  parseTableURI,
 } from '@malloydata/malloy';
 
-// Import from auto-generated file
-// eslint-disable-next-line node/no-unpublished-import
-import {SqlBlockSchema} from './compiler_pb';
-
 export class StreamingCompileConnection implements Connection {
-  readonly name = 'streaming_compile';
-
   private table_schema_cache = new Map<string, StructDef>();
   private sql_block_cache = new Map<string, StructDef>();
-  private default_connection = 'default_connection';
-  private _connections: string[] = [];
+
+  private log = debug('malloydata:streamimg_compile_connection');
+
+  constructor(public readonly name: string) {}
 
   fetchSchemaForSQLBlock = async (
     block: SQLBlock
@@ -66,7 +63,7 @@ export class StreamingCompileConnection implements Connection {
     _sql: string,
     _options?: unknown
   ): Promise<MalloyQueryData> => {
-    console.log('ERROR: runSQL() called.');
+    this.log('ERROR: runSQL() called.');
     throw new Error('Method not implemented.');
   };
 
@@ -81,7 +78,7 @@ export class StreamingCompileConnection implements Connection {
   canFetchSchemaAndRunStreamSimultaneously = async (): Promise<Boolean> =>
     false;
 
-  async fetchSchemaForTables(tables: string[]): Promise<{
+  async fetchSchemaForTables(tables: Record<string, string>): Promise<{
     schemas: Record<string, StructDef>;
     errors: Record<string, string>;
   }> {
@@ -89,20 +86,12 @@ export class StreamingCompileConnection implements Connection {
       schemas: {} as Record<string, StructDef>,
       errors: {} as Record<string, string>,
     };
-    const tableHasConnection = new RegExp(/^.+:(.+)$/);
-    for (const table of tables) {
-      const schema = this.table_schema_cache.get(table);
+    for (const tableKey in tables) {
+      const schema = this.table_schema_cache.get(tableKey);
       if (schema === undefined) {
-        if (tableHasConnection.test(table)) {
-          result.errors[table] = `No schema data available for {${table}}`;
-        } else {
-          result.errors[
-            table
-          ] = `No schema data available for {${this.default_connection}:${table}}`;
-        }
-        // console.log(result.errors[table]);
+        result.errors[tableKey] = `No schema data available for {${tableKey}}`;
       } else {
-        result.schemas[table] = schema;
+        result.schemas[tableKey] = schema;
       }
     }
 
@@ -113,30 +102,22 @@ export class StreamingCompileConnection implements Connection {
     schemas: Record<string, StructDef>;
     errors: Record<string, string>;
   }> {
-    console.log('ERROR: fetchSchemaForSQLBlocks() called.');
+    this.log('ERROR: fetchSchemaForSQLBlocks() called.');
     throw new Error('Method not implemented.');
   }
 
-  addTableSchema = (name: string, schema: StructDef): void => {
-    const {connectionName, tablePath} = parseTableURI(name);
-
-    if (connectionName === this.default_connection) {
-      name = tablePath;
-    } else if (connectionName) {
-      this._connections.push(connectionName);
-    }
-    this.table_schema_cache.set(name, schema);
+  addTableSchema = (tableKey: string, schema: StructDef): void => {
+    this.table_schema_cache.set(tableKey, schema);
   };
 
-  addSqlBlockSchema = (sqlBlock: SqlBlockSchema): void => {
-    this.sql_block_cache.set(
-      sqlBlock.getName(),
-      JSON.parse(sqlBlock.getSchema()) as StructDef
-    );
+  addSqlBlockSchema = (name: string, schema: StructDef): void => {
+    this.sql_block_cache.set(name, schema);
   };
 
-  get connectionNames() {
-    return this._connections;
+  async estimateQueryCost(_sqlCommand: string): Promise<QueryRunStats> {
+    return {
+      queryCostBytes: undefined,
+    };
   }
 
   async close(): Promise<void> {}
