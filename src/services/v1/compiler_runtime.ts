@@ -21,12 +21,14 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import debug from 'debug';
 import {
   LookupConnection,
   Connection,
   MalloyQueryData,
   SQLBlock,
   StructDef,
+  QueryRunStats,
 } from '@malloydata/malloy';
 
 // Import from auto-generated file
@@ -40,6 +42,8 @@ export class CompilerRuntime
 
   private request: CompileRequest;
   private schemas: Record<string, StructDef>;
+
+  private log = debug('malloydata:compiler_runtime');
 
   constructor(request: CompileRequest) {
     this.request = request;
@@ -61,7 +65,7 @@ export class CompilerRuntime
     | {structDef: StructDef; error?: undefined}
     | {error: string; structDef?: undefined}
   > => {
-    console.log('ERROR: fetchSchemaForSQLBlock() called.');
+    this.log('ERROR: fetchSchemaForSQLBlock() called.');
     throw new Error('Method not implemented.');
   };
 
@@ -69,7 +73,7 @@ export class CompilerRuntime
     _sql: string,
     _options?: unknown
   ): Promise<MalloyQueryData> => {
-    console.log('ERROR: runSQL() called.');
+    this.log('ERROR: runSQL() called.');
     throw new Error('Method not implemented.');
   };
 
@@ -84,14 +88,16 @@ export class CompilerRuntime
   canFetchSchemaAndRunStreamSimultaneously = async (): Promise<Boolean> =>
     false;
 
-  async fetchSchemaForTables(tables: string[]): Promise<{
+  async fetchSchemaForTables(tables: Record<string, string>): Promise<{
     schemas: Record<string, StructDef>;
     errors: Record<string, string>;
   }> {
-    console.log(JSON.stringify(tables));
-    for (const table of tables) {
-      if (!(table in this.schemas)) {
-        throw new Error(`Requested table (${table}) not found in schema data.`);
+    this.log('fetchSchemaForTables', JSON.stringify(tables));
+    for (const tableKey in tables) {
+      if (!(tableKey in this.schemas)) {
+        throw new Error(
+          `Requested table (${tableKey}) not found in schema data.`
+        );
       }
     }
     return {schemas: this.schemas, errors: {}};
@@ -101,16 +107,22 @@ export class CompilerRuntime
     schemas: Record<string, StructDef>;
     errors: Record<string, string>;
   }> {
-    console.log('ERROR: fetchSchemaForSQLBlocks() called.');
+    this.log('ERROR: fetchSchemaForSQLBlocks() called.');
     throw new Error('Method not implemented.');
   }
 
   lookupConnection = async (
     _connectionName?: string | undefined
   ): Promise<Connection> => {
-    console.log('lookupConnection() called.');
+    this.log('lookupConnection() called.');
     return this;
   };
+
+  async estimateQueryCost(_sqlCommand: string): Promise<QueryRunStats> {
+    return {
+      queryCostBytes: undefined,
+    };
+  }
 
   async close(): Promise<void> {}
 }

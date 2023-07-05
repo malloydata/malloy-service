@@ -22,37 +22,34 @@
  */
 
 import debug from 'debug';
-import {URLReader} from '@malloydata/malloy';
+import {Connection, LookupConnection} from '@malloydata/malloy';
+import {StreamingCompileConnection} from './streaming_compile_connection';
 
-// Import from auto-generated file
-// eslint-disable-next-line node/no-unpublished-import
-import {CompileRequest} from './compiler_pb';
+export class StreamingCompileLookupConnection
+  implements LookupConnection<Connection>
+{
+  private default_connection = 'default_connection';
+  private _connections: Record<string, StreamingCompileConnection> = {};
 
-export class CompilerURLReader implements URLReader {
-  private request: CompileRequest;
+  private log = debug('malloydata:streamimg_compile_lookup_connection');
 
-  private log = debug('mallloydata:compile_url_reader');
-
-  constructor(request: CompileRequest) {
-    this.request = request;
+  async lookupConnection(
+    connectionName?: string | undefined
+  ): Promise<Connection> {
+    if (!connectionName) {
+      connectionName = this.default_connection;
+    }
+    this.log('lookupConnection', connectionName);
+    if (!this._connections[connectionName]) {
+      this._connections[connectionName] = new StreamingCompileConnection(
+        connectionName
+      );
+    }
+    return this._connections[connectionName];
   }
 
-  readURL = async (url: URL): Promise<string> => {
-    const urlString = decodeURI(url.toString());
-    this.log('readURL() called:');
-    this.log(urlString);
-    if (this.request.getDocument()?.getUrl() === urlString) {
-      this.log('found URL');
-      return this.request.getDocument()!.getContent();
-    }
-
-    for (const reference of this.request.getReferencesList()) {
-      if (reference.getUrl() === urlString) {
-        this.log('found reference URL');
-        return reference.getContent();
-      }
-    }
-
-    throw new Error(`No document defined for url: ${urlString}`);
-  };
+  getConnection(connectionName: string): StreamingCompileConnection {
+    this.log('getConnection', connectionName);
+    return this._connections[connectionName];
+  }
 }
