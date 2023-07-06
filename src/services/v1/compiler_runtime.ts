@@ -40,13 +40,11 @@ export class CompilerRuntime
 {
   readonly name = 'compiler_runtime';
 
-  private request: CompileRequest;
   private schemas: Record<string, StructDef>;
 
   private log = debug('malloydata:compiler_runtime');
 
-  constructor(request: CompileRequest) {
-    this.request = request;
+  constructor(private request: CompileRequest) {
     try {
       this.schemas = JSON.parse(this.request.getSchema())['schemas'] as Record<
         string,
