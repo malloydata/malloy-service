@@ -32,6 +32,7 @@ import {
   CompileResponse,
   CompilerRequest,
   SqlBlock,
+  TableSchema,
   // Import from auto-generated file
   // eslint-disable-next-line node/no-unpublished-import
 } from './compiler_pb';
@@ -242,13 +243,20 @@ class CompilerHandler implements ICompilerServer {
         return;
       }
 
-      const schemaRegex = new RegExp(/^No schema data available for {(.+)}$/);
+      const schemaRegex = new RegExp(
+        /^No schema data available for {(?<key>.*)} {(?<connection>.*)} {(?<table>.*)}$/
+      );
       if (schemaRegex.test(error.problems[0].message)) {
         response.setType(CompilerRequest.Type.TABLE_SCHEMAS);
         for (const problem of error.problems) {
           const matches = problem.message.match(schemaRegex);
-          if (matches && matches.length > 0) {
-            response.addTableSchemas(matches[1]);
+          if (matches && matches.groups) {
+            const {key, connection, table} = matches.groups;
+            const tableSchema = new TableSchema();
+            tableSchema.setKey(key);
+            tableSchema.setConnection(connection);
+            tableSchema.setTable(table);
+            response.addTableSchemas(tableSchema);
           } else {
             console.error(
               `Processing table schemas, ignoring: ${problem.message}`
@@ -263,16 +271,18 @@ class CompilerHandler implements ICompilerServer {
       }
 
       const sqlBlockRegex = new RegExp(
-        /SQL Block schema missing: \[\[(.+)\]\]{(.+)}$/s
+        /SQL Block schema missing: \[\[(?<name>.+)\]\]{(?<connection>.+)}{(?<sql>.+)}$/s
       );
       if (sqlBlockRegex.test(error.problems[0].message)) {
         response.setType(CompilerRequest.Type.SQL_BLOCK_SCHEMAS);
         for (const problem of error.problems) {
           const matches = problem.message.match(sqlBlockRegex);
-          if (matches && matches.length > 0) {
+          if (matches && matches.groups) {
+            const {name, connection, sql} = matches.groups;
             const sqlBlock = new SqlBlock();
-            sqlBlock.setName(matches[1]);
-            sqlBlock.setSql(matches[2]);
+            sqlBlock.setName(name);
+            sqlBlock.setConnection(connection);
+            sqlBlock.setSql(sql);
             response.setSqlBlock(sqlBlock);
           } else {
             console.error(

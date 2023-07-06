@@ -103,14 +103,6 @@ export class CompilerRuntime
     return {schemas: this.schemas, errors: {}};
   }
 
-  fetchSchemaForSQLBlocks(_sqlStructs: SQLBlock[]): Promise<{
-    schemas: Record<string, StructDef>;
-    errors: Record<string, string>;
-  }> {
-    this.log('ERROR: fetchSchemaForSQLBlocks() called.');
-    throw new Error('Method not implemented.');
-  }
-
   lookupConnection = async (
     _connectionName?: string | undefined
   ): Promise<Connection> => {

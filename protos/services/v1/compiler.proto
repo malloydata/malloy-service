@@ -57,6 +57,12 @@ message CompileDocument {
   string content = 2;
 }
 
+message TableSchema {
+  string key = 1;
+  string connection = 2;
+  string table = 3;
+}
+
 message CompilerRequest {
   enum Type {
     UNKNOWN = 0;
@@ -68,7 +74,7 @@ message CompilerRequest {
 
   CompilerRequest.Type type = 1;
   repeated string import_urls = 2;
-  repeated string table_schemas = 3;
+  repeated TableSchema table_schemas = 3;
   SqlBlock sql_block = 4;
   string connection = 5;
 
@@ -78,6 +84,7 @@ message CompilerRequest {
 message SqlBlock {
   string name = 1;
   string sql = 2;
+  string connection = 3;
 }
 
 message SqlBlockSchema {
