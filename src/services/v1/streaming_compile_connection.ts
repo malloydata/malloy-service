@@ -54,7 +54,7 @@ export class StreamingCompileConnection implements Connection {
     } else {
       return {
         structDef: undefined,
-        error: `SQL Block schema missing: [[${block.name}]]{${block.selectStr}}`,
+        error: `SQL Block schema missing: [[${block.name}]]{${this.name}}{${block.selectStr}}`,
       };
     }
   };
@@ -89,21 +89,15 @@ export class StreamingCompileConnection implements Connection {
     for (const tableKey in tables) {
       const schema = this.table_schema_cache.get(tableKey);
       if (schema === undefined) {
-        result.errors[tableKey] = `No schema data available for {${tableKey}}`;
+        result.errors[
+          tableKey
+        ] = `No schema data available for {${tableKey}} {${this.name}} {${tables[tableKey]}}`;
       } else {
         result.schemas[tableKey] = schema;
       }
     }
 
     return result;
-  }
-
-  fetchSchemaForSQLBlocks(_sqlStructs: SQLBlock[]): Promise<{
-    schemas: Record<string, StructDef>;
-    errors: Record<string, string>;
-  }> {
-    this.log('ERROR: fetchSchemaForSQLBlocks() called.');
-    throw new Error('Method not implemented.');
   }
 
   addTableSchema = (tableKey: string, schema: StructDef): void => {
