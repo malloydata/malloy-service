@@ -48,6 +48,11 @@ import {
 class CompilerHandler implements ICompilerServer {
   log = debug('malloydata:compile_handler');
 
+  /**
+   * compileStream
+   *
+   * @param call GRPC call
+   */
   compileStream = (
     call: grpc.ServerDuplexStream<CompileRequest, CompilerRequest>
   ): void => {
@@ -58,7 +63,8 @@ class CompilerHandler implements ICompilerServer {
     let modelUrl: URL | undefined = undefined;
     let query = '';
     let queryType = 'unknown';
-    call.on('data', (request: CompileRequest) => {
+
+    call.on('data', async (request: CompileRequest) => {
       this.log('compile stream data received');
       const response = new CompilerRequest();
       response.setType(CompilerRequest.Type.UNKNOWN);
@@ -76,10 +82,11 @@ class CompilerHandler implements ICompilerServer {
           if (request.getNamedQuery()) {
             query = request.getNamedQuery();
             queryType = 'named';
-          }
-          if (request.getQuery()) {
+          } else if (request.getQuery()) {
             query = request.getQuery();
             queryType = 'query';
+          } else {
+            queryType = 'compile';
           }
           urlReader.addDoc(document);
           break;
@@ -127,36 +134,56 @@ class CompilerHandler implements ICompilerServer {
         return;
       }
 
-      runtime
-        .loadModel(modelUrl)
-        .getModel()
-        .then(model => {
-          switch (queryType) {
-            case 'named':
-              return model.getPreparedQueryByName(query);
-            case 'query':
-              return runtime
-                .loadModel(modelUrl!)
+      try {
+        const modelMaterializer = runtime.loadModel(modelUrl);
+
+        switch (queryType) {
+          case 'named':
+            {
+              const model = await modelMaterializer.getModel();
+              const {preparedResult} = model.getPreparedQueryByName(query);
+              response.setConnection(preparedResult.connectionName);
+              response.setContent(preparedResult.sql);
+            }
+            break;
+          case 'query':
+            {
+              const {preparedResult} = await modelMaterializer
                 .loadQuery(query)
                 .getPreparedQuery();
-            default:
-              throw new Error(`Unhandled query type: ${queryType}`);
-          }
-        })
-        .then(({preparedResult: {sql, connectionName}}) => {
-          response.setConnection(connectionName);
-          response.setContent(sql);
-        })
-        .then(() => response.setType(CompilerRequest.Type.COMPLETE))
-        .catch(error => this.mapErrorToResponse(response, error))
-        .finally(() => {
-          call.write(response);
-        });
+              response.setConnection(preparedResult.connectionName);
+              response.setContent(preparedResult.sql);
+            }
+            break;
+          case 'compile':
+            {
+              const model = await modelMaterializer.getModel();
+              response.setContent(JSON.stringify(model._modelDef));
+            }
+            break;
+          default:
+            throw new Error(`Unhandled query type: ${queryType}`);
+        }
+        response.setType(CompilerRequest.Type.COMPLETE);
+      } catch (error) {
+        this.mapErrorToResponse(response, error);
+      } finally {
+        call.write(response);
+      }
     });
+
     call.on('end', () => {
       this.log('compile session ended');
     });
   };
+
+  /**
+   * compile
+   *
+   * @param call GRPC call
+   * @param callback GRPC callback
+   * @returns void
+   */
   compile = (
     call: grpc.ServerUnaryCall<CompileRequest, CompileResponse>,
     callback: grpc.sendUnaryData<CompileResponse>
@@ -224,19 +251,18 @@ class CompilerHandler implements ICompilerServer {
     }
 
     if (error instanceof MalloyError) {
-      this.log('mapErrorToResponse', error.problems[0].message);
+      const problem = error.problems[0];
+      this.log('mapErrorToResponse', problem.message);
 
       const importRegex = new RegExp(/^import error: mlr:\/\/(.+)$/);
-      if (importRegex.test(error.problems[0].message)) {
+      if (importRegex.test(problem.message)) {
         response.setType(CompilerRequest.Type.IMPORT);
         for (const problem of error.problems) {
           const matches = problem.message.match(importRegex);
           if (matches && matches.length > 0) {
             response.addImportUrls(matches[1]);
           } else {
-            console.error(
-              `Processing import errors, ignoring: ${problem.message}`
-            );
+            this.log(`Processing import errors, ignoring: ${problem.message}`);
           }
         }
         this.log('mapToErrorResponse importUrls', response.getImportUrlsList());
@@ -246,7 +272,7 @@ class CompilerHandler implements ICompilerServer {
       const schemaRegex = new RegExp(
         /^No schema data available for {(?<key>.*)} {(?<connection>.*)} {(?<table>.*)}$/
       );
-      if (schemaRegex.test(error.problems[0].message)) {
+      if (schemaRegex.test(problem.message)) {
         response.setType(CompilerRequest.Type.TABLE_SCHEMAS);
         for (const problem of error.problems) {
           const matches = problem.message.match(schemaRegex);
@@ -258,9 +284,7 @@ class CompilerHandler implements ICompilerServer {
             tableSchema.setTable(table);
             response.addTableSchemas(tableSchema);
           } else {
-            console.error(
-              `Processing table schemas, ignoring: ${problem.message}`
-            );
+            this.log(`Processing table schemas, ignoring: ${problem.message}`);
           }
         }
         this.log(
@@ -273,7 +297,7 @@ class CompilerHandler implements ICompilerServer {
       const sqlBlockRegex = new RegExp(
         /SQL Block schema missing: \[\[(?<name>.+)\]\]{(?<connection>.+)}{(?<sql>.+)}$/s
       );
-      if (sqlBlockRegex.test(error.problems[0].message)) {
+      if (sqlBlockRegex.test(problem.message)) {
         response.setType(CompilerRequest.Type.SQL_BLOCK_SCHEMAS);
         for (const problem of error.problems) {
           const matches = problem.message.match(sqlBlockRegex);
@@ -285,7 +309,7 @@ class CompilerHandler implements ICompilerServer {
             sqlBlock.setSql(sql);
             response.setSqlBlock(sqlBlock);
           } else {
-            console.error(
+            this.log(
               `Processing sql block schemas, ignoring: ${problem.message}`
             );
           }
@@ -293,6 +317,14 @@ class CompilerHandler implements ICompilerServer {
         // this.log(response);
         return;
       }
+
+      response.setType(CompilerRequest.Type.ERROR);
+      let line = '';
+      if (problem.at) {
+        line = ` at line ${problem.at.range.start.line + 1}`;
+      }
+      response.setContent(`${problem.severity}: ${problem.message}${line}`);
+      return;
     }
 
     response.setType(CompilerRequest.Type.UNKNOWN);

@@ -70,6 +70,7 @@ message CompilerRequest {
     TABLE_SCHEMAS = 2;
     SQL_BLOCK_SCHEMAS = 3;
     COMPLETE = 4;
+    ERROR = 5;
   }
 
   CompilerRequest.Type type = 1;
