@@ -38,6 +38,10 @@ export class StreamingCompileConnection implements Connection {
 
   constructor(public readonly name: string) {}
 
+  get dialectName(): string {
+    throw new Error('Method not implemented.');
+  }
+
   fetchSchemaForSQLBlock = async (
     block: SQLBlock
   ): Promise<

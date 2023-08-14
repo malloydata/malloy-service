@@ -35,6 +35,7 @@ message CompileRequest {
     REFERENCES = 1;
     TABLE_SCHEMAS = 2;
     SQL_BLOCK_SCHEMAS = 3;
+    RESULTS = 4;
   }
   CompileRequest.Type type = 1;
 
@@ -45,6 +46,12 @@ message CompileRequest {
   repeated SqlBlockSchema sql_block_schemas = 5;
   string query = 6;
   string named_query = 7;
+  QueryResult query_result = 8;
+}
+
+message QueryResult {
+  string data = 1;
+  int32 total_rows = 2;
 }
 
 message CompileResponse {
@@ -71,6 +78,7 @@ message CompilerRequest {
     SQL_BLOCK_SCHEMAS = 3;
     COMPLETE = 4;
     ERROR = 5;
+    RUN = 6;
   }
 
   CompilerRequest.Type type = 1;
@@ -78,7 +86,7 @@ message CompilerRequest {
   repeated TableSchema table_schemas = 3;
   SqlBlock sql_block = 4;
   string connection = 5;
-
+  string render_content = 6;
   string content = 99;
 }
 

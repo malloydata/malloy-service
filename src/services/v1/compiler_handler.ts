@@ -23,7 +23,17 @@
 
 import * as grpc from '@grpc/grpc-js';
 import debug from 'debug';
-import {MalloyError, Runtime, StructDef} from '@malloydata/malloy';
+import {JSDOM} from 'jsdom';
+import {
+  MalloyError,
+  Runtime,
+  StructDef,
+  ResultJSON,
+  Result,
+  QueryData,
+  QueryDataRow,
+} from '@malloydata/malloy';
+import {HTMLView} from '@malloydata/render';
 // Import from auto-generated file
 // eslint-disable-next-line node/no-unpublished-import
 import {CompilerService, ICompilerServer} from './compiler_grpc_pb';
@@ -63,6 +73,9 @@ class CompilerHandler implements ICompilerServer {
     let modelUrl: URL | undefined = undefined;
     let query = '';
     let queryType = 'unknown';
+    let rendered = false;
+    let resultJson = null;
+    let totalRows = 0;
 
     call.on('data', async (request: CompileRequest) => {
       this.log('compile stream data received');
@@ -126,6 +139,12 @@ class CompilerHandler implements ICompilerServer {
             }
           }
           break;
+        case CompileRequest.Type.RESULTS: {
+          resultJson = JSON.parse(request.getQueryResult()!.getData());
+          totalRows = request.getQueryResult()?.getTotalRows() || 0;
+          rendered = true;
+          break;
+        }
       }
 
       if (modelUrl === undefined) {
@@ -144,6 +163,7 @@ class CompilerHandler implements ICompilerServer {
               const {preparedResult} = model.getPreparedQueryByName(query);
               response.setConnection(preparedResult.connectionName);
               response.setContent(preparedResult.sql);
+              response.setType(CompilerRequest.Type.COMPLETE);
             }
             break;
           case 'query':
@@ -153,18 +173,47 @@ class CompilerHandler implements ICompilerServer {
                 .getPreparedQuery();
               response.setConnection(preparedResult.connectionName);
               response.setContent(preparedResult.sql);
+              if (!rendered) {
+                this.log('Yet to render. Request query execution.');
+                response.setType(CompilerRequest.Type.RUN);
+              } else {
+                this.log('SQL results received. Rendering...');
+                const query_data: QueryData = convertJSONToQueryData(
+                  JSON.parse(resultJson!)
+                );
+                const malloyRes: ResultJSON = {
+                  queryResult: {
+                    ...preparedResult._rawQuery,
+                    result: query_data,
+                    totalRows: totalRows,
+                  },
+                  modelDef: preparedResult._modelDef,
+                } as ResultJSON;
+                const result = Result.fromJSON(malloyRes);
+                const {window} = new JSDOM(
+                  '<html><head></head><body></body></html>'
+                );
+                const {document} = window;
+                const dataStyles = urlReader.getHackyAccumulatedDataStyles();
+                const htmlView = new HTMLView(document).render(result, {
+                  dataStyles,
+                  isDrillingEnabled: false,
+                });
+                response.setRenderContent((await htmlView).outerHTML);
+                response.setType(CompilerRequest.Type.COMPLETE);
+              }
             }
             break;
           case 'compile':
             {
               const model = await modelMaterializer.getModel();
               response.setContent(JSON.stringify(model._modelDef));
+              response.setType(CompilerRequest.Type.COMPLETE);
             }
             break;
           default:
             throw new Error(`Unhandled query type: ${queryType}`);
         }
-        response.setType(CompilerRequest.Type.COMPLETE);
       } catch (error) {
         this.mapErrorToResponse(response, error);
       } finally {
@@ -335,4 +384,27 @@ class CompilerHandler implements ICompilerServer {
 export default {
   service: CompilerService,
   handler: new CompilerHandler(),
+};
+
+export const convertJSONToQueryData = (json: any) => {
+  const queryData: QueryData = [];
+  for (const row of json) {
+    const queryDataRow: QueryDataRow = {};
+    for (const [columnName, columnValue] of Object.entries(row)) {
+      const queryValue = _getQueryValue(columnValue);
+      queryDataRow[columnName] = queryValue;
+    }
+    queryData.push(queryDataRow);
+  }
+  return queryData;
+};
+
+const _getQueryValue = (value: any) => {
+  if (Array.isArray(value)) {
+    return convertJSONToQueryData(value);
+  } else if (typeof value === 'object' && value !== null) {
+    return convertJSONToQueryData(value);
+  } else {
+    return value;
+  }
 };

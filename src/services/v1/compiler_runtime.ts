@@ -56,6 +56,9 @@ export class CompilerRuntime
       console.warn(ex);
     }
   }
+  get dialectName(): string {
+    throw new Error('Method not implemented.');
+  }
 
   fetchSchemaForSQLBlock = async (
     _block: SQLBlock
