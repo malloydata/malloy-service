@@ -23,9 +23,30 @@
 
 import * as grpc from '@grpc/grpc-js';
 import CompilerHandler from './services/v1/compiler_handler';
+import path from 'path';
+import fs from 'fs';
 
 const PORT = process.env.PORT || 14310;
 const HOST = process.env.HOST || '0.0.0.0';
+
+function showThirdPartyRequested(): Boolean {
+  if (process.argv.length <= 2) {
+    return false;
+  }
+
+  for (const arg of process.argv) {
+    if (arg === 'third-party') {
+      console.log(
+        fs
+          .readFileSync(path.join(__dirname, 'third_party_notices.txt'))
+          .toString()
+      );
+      return true;
+    }
+  }
+
+  return false;
+}
 
 export function startServer(listeningPort = PORT): grpc.Server {
   const grpcServer = new grpc.Server();
@@ -50,8 +71,6 @@ export function startServer(listeningPort = PORT): grpc.Server {
   return grpcServer;
 }
 
-startServer();
-
 process.on('uncaughtException', ex => {
   console.error(ex);
 });
@@ -59,3 +78,7 @@ process.on('uncaughtException', ex => {
 process.on('unhandledRejection', ex => {
   console.error(ex);
 });
+
+if (!showThirdPartyRequested()) {
+  startServer();
+}
