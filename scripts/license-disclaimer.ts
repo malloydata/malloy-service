@@ -53,7 +53,7 @@ export function generateDisclaimer(
   seen = {};
   console.log('Generating third party licenses:');
 
-  // include dev dependencies b/c we put all dependencies there so that npx malloy-cli
+  // include dev dependencies b/c we put all dependencies there so that npx malloy-service
   // doesn't have to install dependencies for no good reason, as everything is bundled
   // when shipped to npm. This means that the license file also includes things we don't actually
   // ship, but it's a very short list anyways.
