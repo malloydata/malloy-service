@@ -151,6 +151,7 @@ function doDependencies(
     }
   }
 }
+
 const packageJsonPath = path.join(__dirname, '..', 'package.json');
 const nodeModulesPath = path.join(__dirname, '..', 'node_modules');
 const fullLicenseFilePath = path.join(
@@ -159,7 +160,5 @@ const fullLicenseFilePath = path.join(
   'dist',
   'third_party_notices.txt'
 );
-console.log(packageJsonPath);
-console.log(nodeModulesPath);
-console.log(fullLicenseFilePath);
+
 generateDisclaimer(packageJsonPath, nodeModulesPath, fullLicenseFilePath);
