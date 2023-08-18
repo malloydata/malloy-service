@@ -37,16 +37,21 @@ message CompileRequest {
     SQL_BLOCK_SCHEMAS = 3;
     RESULTS = 4;
   }
+  enum Mode {
+    COMPILE_AND_RENDER = 0;
+    COMPILE_ONLY = 1;
+  }
   CompileRequest.Type type = 1;
+  CompileRequest.Mode mode = 2;
 
 
-  CompileDocument document = 2;
-  repeated CompileDocument references = 3;
-  string schema = 4;
-  repeated SqlBlockSchema sql_block_schemas = 5;
-  string query = 6;
-  string named_query = 7;
-  QueryResult query_result = 8;
+  CompileDocument document = 3;
+  repeated CompileDocument references = 4;
+  string schema = 5;
+  repeated SqlBlockSchema sql_block_schemas = 6;
+  string query = 7;
+  string named_query = 8;
+  QueryResult query_result = 9;
 }
 
 message QueryResult {
