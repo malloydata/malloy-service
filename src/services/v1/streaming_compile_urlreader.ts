@@ -38,7 +38,7 @@ export function compileDataStyles(styles: string): DataStyles {
   }
 }
 
-// TODO replace this with actual JSON metadata import functionality, when it exists
+// TODO - this may be removed since our tag language is picking up.
 export async function dataStylesForFile(
   reader: URLReader,
   url: URL,
@@ -50,8 +50,6 @@ export async function dataStylesForFile(
     if (line.startsWith(PREFIX)) {
       const fileName = line.trimEnd().substring(PREFIX.length);
       const styleUrl = new URL(fileName, url);
-      // TODO instead of failing silently when the file does not exist, perform this after the WebView has been
-      //      created, so that the error can be shown there.
       let stylesText: string;
       try {
         stylesText = await reader.readURL(styleUrl);
