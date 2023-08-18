@@ -35,16 +35,28 @@ message CompileRequest {
     REFERENCES = 1;
     TABLE_SCHEMAS = 2;
     SQL_BLOCK_SCHEMAS = 3;
+    RESULTS = 4;
+  }
+  enum Mode {
+    COMPILE_AND_RENDER = 0;
+    COMPILE_ONLY = 1;
   }
   CompileRequest.Type type = 1;
+  CompileRequest.Mode mode = 2;
 
 
-  CompileDocument document = 2;
-  repeated CompileDocument references = 3;
-  string schema = 4;
-  repeated SqlBlockSchema sql_block_schemas = 5;
-  string query = 6;
-  string named_query = 7;
+  CompileDocument document = 3;
+  repeated CompileDocument references = 4;
+  string schema = 5;
+  repeated SqlBlockSchema sql_block_schemas = 6;
+  string query = 7;
+  string named_query = 8;
+  QueryResult query_result = 9;
+}
+
+message QueryResult {
+  string data = 1;
+  int32 total_rows = 2;
 }
 
 message CompileResponse {
@@ -71,6 +83,7 @@ message CompilerRequest {
     SQL_BLOCK_SCHEMAS = 3;
     COMPLETE = 4;
     ERROR = 5;
+    RUN = 6;
   }
 
   CompilerRequest.Type type = 1;
@@ -78,7 +91,7 @@ message CompilerRequest {
   repeated TableSchema table_schemas = 3;
   SqlBlock sql_block = 4;
   string connection = 5;
-
+  string render_content = 6;
   string content = 99;
 }
 

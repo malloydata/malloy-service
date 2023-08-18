@@ -23,7 +23,19 @@
 
 import * as grpc from '@grpc/grpc-js';
 import debug from 'debug';
-import {MalloyError, Runtime, StructDef} from '@malloydata/malloy';
+import {JSDOM} from 'jsdom';
+import {
+  MalloyError,
+  Runtime,
+  StructDef,
+  ResultJSON,
+  Result,
+  QueryData,
+  QueryDataRow,
+  PreparedResult,
+  QueryValue,
+} from '@malloydata/malloy';
+import {HTMLView} from '@malloydata/render';
 // Import from auto-generated file
 // eslint-disable-next-line node/no-unpublished-import
 import {CompilerService, ICompilerServer} from './compiler_grpc_pb';
@@ -45,6 +57,27 @@ import {
   StreamingCompileURLReader,
 } from './streaming_compile_urlreader';
 
+const convertJSONToQueryData = (json: unknown) => {
+  const queryData: QueryData = [];
+  for (const row of Object.values(json as JSON)) {
+    const queryDataRow: QueryDataRow = {};
+    for (const [columnName, columnValue] of Object.entries(row)) {
+      const queryValue = _getQueryValue(columnValue);
+      queryDataRow[columnName] = queryValue as QueryValue;
+    }
+    queryData.push(queryDataRow);
+  }
+  return queryData;
+};
+
+const _getQueryValue = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return convertJSONToQueryData(value);
+  } else {
+    return value;
+  }
+};
+
 class CompilerHandler implements ICompilerServer {
   log = debug('malloydata:compile_handler');
 
@@ -63,6 +96,10 @@ class CompilerHandler implements ICompilerServer {
     let modelUrl: URL | undefined = undefined;
     let query = '';
     let queryType = 'unknown';
+    let rendered = false;
+    let resultJson = null;
+    let totalRows = 0;
+    let serverMode = CompileRequest.Mode.COMPILE_AND_RENDER;
 
     call.on('data', async (request: CompileRequest) => {
       this.log('compile stream data received');
@@ -87,6 +124,9 @@ class CompilerHandler implements ICompilerServer {
             queryType = 'query';
           } else {
             queryType = 'compile';
+          }
+          if (request.getMode() !== undefined) {
+            serverMode = request.getMode();
           }
           urlReader.addDoc(document);
           break;
@@ -126,6 +166,12 @@ class CompilerHandler implements ICompilerServer {
             }
           }
           break;
+        case CompileRequest.Type.RESULTS: {
+          resultJson = JSON.parse(request.getQueryResult()!.getData());
+          totalRows = request.getQueryResult()?.getTotalRows() || 0;
+          rendered = true;
+          break;
+        }
       }
 
       if (modelUrl === undefined) {
@@ -136,35 +182,54 @@ class CompilerHandler implements ICompilerServer {
 
       try {
         const modelMaterializer = runtime.loadModel(modelUrl);
+        let preparedResult: PreparedResult | undefined = undefined;
 
         switch (queryType) {
           case 'named':
-            {
-              const model = await modelMaterializer.getModel();
-              const {preparedResult} = model.getPreparedQueryByName(query);
-              response.setConnection(preparedResult.connectionName);
-              response.setContent(preparedResult.sql);
-            }
-            break;
           case 'query':
             {
-              const {preparedResult} = await modelMaterializer
-                .loadQuery(query)
-                .getPreparedQuery();
+              if (queryType === 'named') {
+                preparedResult = (
+                  await modelMaterializer.getModel()
+                ).getPreparedQueryByName(query).preparedResult;
+              } else {
+                preparedResult = await modelMaterializer
+                  .loadQuery(query)
+                  .getPreparedResult();
+              }
               response.setConnection(preparedResult.connectionName);
               response.setContent(preparedResult.sql);
+              if (serverMode === CompileRequest.Mode.COMPILE_ONLY) {
+                response.setType(CompilerRequest.Type.COMPLETE);
+              } else if (!rendered) {
+                this.log('Yet to render. Request query execution.');
+                response.setType(CompilerRequest.Type.RUN);
+              } else {
+                this.log('SQL results received. Rendering...');
+                const queryData: QueryData = convertJSONToQueryData(
+                  JSON.parse(resultJson!)
+                );
+                const htmlContent = this.renderHtml(
+                  queryData,
+                  preparedResult,
+                  totalRows,
+                  urlReader
+                );
+                response.setRenderContent(await htmlContent);
+                response.setType(CompilerRequest.Type.COMPLETE);
+              }
             }
             break;
           case 'compile':
             {
               const model = await modelMaterializer.getModel();
               response.setContent(JSON.stringify(model._modelDef));
+              response.setType(CompilerRequest.Type.COMPLETE);
             }
             break;
           default:
             throw new Error(`Unhandled query type: ${queryType}`);
         }
-        response.setType(CompilerRequest.Type.COMPLETE);
       } catch (error) {
         this.mapErrorToResponse(response, error);
       } finally {
@@ -176,6 +241,31 @@ class CompilerHandler implements ICompilerServer {
       this.log('compile session ended');
     });
   };
+
+  private async renderHtml(
+    queryData: QueryData,
+    preparedResult: PreparedResult,
+    totalRows: number,
+    urlReader: StreamingCompileURLReader
+  ): Promise<string> {
+    const malloyRes: ResultJSON = {
+      queryResult: {
+        ...preparedResult._rawQuery,
+        result: queryData,
+        totalRows: totalRows,
+      },
+      modelDef: preparedResult._modelDef,
+    } as ResultJSON;
+    const result = Result.fromJSON(malloyRes);
+    const {window} = new JSDOM('<html><head></head><body></body></html>');
+    const {document} = window;
+    const dataStyles = urlReader.getHackyAccumulatedDataStyles();
+    const htmlView = new HTMLView(document).render(result, {
+      dataStyles,
+      isDrillingEnabled: false,
+    });
+    return (await htmlView).outerHTML;
+  }
 
   /**
    * compile
