@@ -11,8 +11,8 @@
   "scripts": {
     "build": "npm run protos-gen && tsc --build",
     "start": "npm run build && node ./dist/server.js",
-    "package": "npm run build && npx pkg -c package.json dist/server.js && ls -la  \"pkg/@malloydata/\"malloy-*",
-    "package-dev": "npm run build && npx pkg -t node16 -c package.json dist/server.js",
+    "package": "npm run build && npx ts-node scripts/license-disclaimer.ts && npx pkg -c package.json dist/server.js && ls -la  \"pkg/@malloydata/\"malloy-*",
+    "package-dev": "npm run build && npx ts-node scripts/license-disclaimer.ts && npx pkg -t node16 -c package.json dist/server.js",
     "protos-gen": "mkdir -p dist && npm run protos-gen-js && npm run protos-gen-ts && npm run protos-gen-js-src",
     "protos-gen-js": "npx grpc_tools_node_protoc --js_out=import_style=commonjs,binary:dist --grpc_out=grpc_js:dist -I protos protos/**/**/*.proto",
     "protos-gen-js-src": "npx grpc_tools_node_protoc --js_out=import_style=commonjs,binary:src --grpc_out=grpc_js:src -I protos protos/**/**/*.proto",
@@ -53,6 +53,7 @@
   "pkg": {
     "compress": "GZip",
     "scripts": "./dist/**/*.js",
+    "assets": "dist/**/*.txt",
     "targets": [
       "node16-linux-x64",
       "node16-linux-arm64",
