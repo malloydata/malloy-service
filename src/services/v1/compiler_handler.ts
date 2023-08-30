@@ -22,6 +22,8 @@
  */
 
 import * as grpc from '@grpc/grpc-js';
+import fs from 'fs';
+import path from 'path';
 import debug from 'debug';
 import {JSDOM} from 'jsdom';
 import {
@@ -45,6 +47,8 @@ import {
   CompilerRequest,
   SqlBlock,
   TableSchema,
+  ThirdPartyRequest,
+  ThirdPartyResponse,
   // Import from auto-generated file
   // eslint-disable-next-line node/no-unpublished-import
 } from './compiler_pb';
@@ -323,6 +327,24 @@ class CompilerHandler implements ICompilerServer {
       });
     }
   };
+
+  /**
+   * third_party
+   *
+   * @param call GRPC call
+   * @param callback GRPC callback
+   * @returns void
+   */
+  thirdParty = (
+    call: grpc.ServerUnaryCall<ThirdPartyRequest, ThirdPartyResponse>,
+    callback: grpc.sendUnaryData<ThirdPartyResponse>
+  ): void => {
+    const response = new ThirdPartyResponse();
+    response.setMessage(fs
+      .readFileSync(path.join(__dirname, '../../third_party_notices.txt'))
+      .toString());
+    callback(null, response)
+  }
 
   private validate(request: CompileRequest): string[] {
     const errors: string[] = [];
