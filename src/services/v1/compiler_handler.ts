@@ -33,9 +33,7 @@ import {
   ResultJSON,
   Result,
   QueryData,
-  QueryDataRow,
   PreparedResult,
-  QueryValue,
 } from '@malloydata/malloy';
 import {HTMLView} from '@malloydata/render';
 // Import from auto-generated file
@@ -61,27 +59,6 @@ import {
   StreamingCompileURLReader,
 } from './streaming_compile_urlreader';
 
-const convertJSONToQueryData = (json: unknown) => {
-  const queryData: QueryData = [];
-  for (const row of Object.values(json as JSON)) {
-    const queryDataRow: QueryDataRow = {};
-    for (const [columnName, columnValue] of Object.entries(row)) {
-      const queryValue = _getQueryValue(columnValue);
-      queryDataRow[columnName] = queryValue as QueryValue;
-    }
-    queryData.push(queryDataRow);
-  }
-  return queryData;
-};
-
-const _getQueryValue = (value: unknown) => {
-  if (Array.isArray(value)) {
-    return convertJSONToQueryData(value);
-  } else {
-    return value;
-  }
-};
-
 class CompilerHandler implements ICompilerServer {
   log = debug('malloydata:compile_handler');
 
@@ -101,7 +78,7 @@ class CompilerHandler implements ICompilerServer {
     let query = '';
     let queryType = 'unknown';
     let rendered = false;
-    let resultJson = null;
+    let queryData: QueryData | null = null;
     let totalRows = 0;
     let serverMode = CompileRequest.Mode.COMPILE_AND_RENDER;
 
@@ -171,9 +148,15 @@ class CompilerHandler implements ICompilerServer {
           }
           break;
         case CompileRequest.Type.RESULTS: {
-          resultJson = JSON.parse(request.getQueryResult()!.getData());
-          totalRows = request.getQueryResult()?.getTotalRows() || 0;
-          rendered = true;
+          this.log('RESULTS received');
+          const queryResult = request.getQueryResult();
+          if (queryResult) {
+            queryData = JSON.parse(queryResult.getData());
+            totalRows = queryResult.getTotalRows();
+            rendered = true;
+          } else {
+            throw new Error('Missing query result');
+          }
           break;
         }
       }
@@ -208,19 +191,18 @@ class CompilerHandler implements ICompilerServer {
               } else if (!rendered) {
                 this.log('Yet to render. Request query execution.');
                 response.setType(CompilerRequest.Type.RUN);
-              } else {
+              } else if (queryData) {
                 this.log('SQL results received. Rendering...');
-                const queryData: QueryData = convertJSONToQueryData(
-                  JSON.parse(resultJson!)
-                );
-                const htmlContent = this.renderHtml(
+                const htmlContent = await this.renderHtml(
                   queryData,
                   preparedResult,
                   totalRows,
                   urlReader
                 );
-                response.setRenderContent(await htmlContent);
+                response.setRenderContent(htmlContent);
                 response.setType(CompilerRequest.Type.COMPLETE);
+              } else {
+                throw new Error('Missing query data');
               }
             }
             break;
@@ -259,7 +241,7 @@ class CompilerHandler implements ICompilerServer {
         totalRows: totalRows,
       },
       modelDef: preparedResult._modelDef,
-    } as ResultJSON;
+    };
     const result = Result.fromJSON(malloyRes);
     const {window} = new JSDOM('<html><head></head><body></body></html>');
     const {document} = window;
