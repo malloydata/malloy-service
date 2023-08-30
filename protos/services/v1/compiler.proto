@@ -27,6 +27,16 @@ service Compiler {
     rpc Compile (CompileRequest) returns (CompileResponse) {}
 
     rpc CompileStream(stream CompileRequest) returns (stream CompilerRequest) {}
+
+    rpc ThirdParty (ThirdPartyRequest) returns (ThirdPartyResponse) {}
+ }
+
+message ThirdPartyRequest {
+
+}
+
+message ThirdPartyResponse {
+  string message = 1;
 }
 
 message CompileRequest {
