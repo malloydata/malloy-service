@@ -340,11 +340,13 @@ class CompilerHandler implements ICompilerServer {
     callback: grpc.sendUnaryData<ThirdPartyResponse>
   ): void => {
     const response = new ThirdPartyResponse();
-    response.setMessage(fs
-      .readFileSync(path.join(__dirname, '../../third_party_notices.txt'))
-      .toString());
-    callback(null, response)
-  }
+    response.setMessage(
+      fs
+        .readFileSync(path.join(__dirname, '../../third_party_notices.txt'))
+        .toString()
+    );
+    callback(null, response);
+  };
 
   private validate(request: CompileRequest): string[] {
     const errors: string[] = [];
