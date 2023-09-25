@@ -58,9 +58,14 @@ import {
   MissingReferenceError,
   StreamingCompileURLReader,
 } from './streaming_compile_urlreader';
+import { registerDialect } from '@malloydata/malloy/dist/dialect';
+import { F1Dialect } from '../../dialects/f1_dialect';
 
 class CompilerHandler implements ICompilerServer {
   log = debug('malloydata:compile_handler');
+  constructor() {
+    registerDialect(new F1Dialect())
+  }
 
   /**
    * compileStream
