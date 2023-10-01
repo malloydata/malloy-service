@@ -29,13 +29,9 @@ import {URLReader} from '@malloydata/malloy';
 import {CompileRequest} from './compiler_pb';
 
 export class CompilerURLReader implements URLReader {
-  private request: CompileRequest;
-
   private log = debug('malloydata:compile_url_reader');
 
-  constructor(request: CompileRequest) {
-    this.request = request;
-  }
+  constructor(private request: CompileRequest) {}
 
   readURL = async (url: URL): Promise<string> => {
     const urlString = decodeURI(url.toString());

@@ -121,7 +121,7 @@ class CompilerHandler implements ICompilerServer {
           this.log('TABLE SCHEMAS received', Object.keys(rawJson['schemas']));
           for (const [key, schema] of Object.entries(rawJson['schemas']) as [
             string,
-            StructDef
+            StructDef,
           ][]) {
             if (schema.structRelationship.type === 'basetable') {
               const connection = lookupConnection.getConnection(
