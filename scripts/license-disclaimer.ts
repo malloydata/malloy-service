@@ -25,6 +25,7 @@ import path from 'path';
 import {readPackageJson} from './utils/licenses';
 import fs from 'fs';
 import https from 'https';
+// eslint-disable-next-line node/no-unpublished-import
 import axios from 'axios';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -63,10 +64,12 @@ export async function generateDisclaimer(
   // when shipped to npm. This means that the license file also includes things we don't actually
   // ship, but it's a very short list anyways.
   await doDependencies(nodeModulesPath, rootPackageJson, true);
-  let response = await axios.get("https://github.com/nodejs/node/raw/main/LICENSE");
+  const response = await axios.get(
+    'https://github.com/nodejs/node/raw/main/LICENSE'
+  );
   fs.appendFileSync(
     filePath,
-      `
+    `
   -------
   Package: node
   Url: https://github.com/nodejs/node/blob/main/LICENSE
