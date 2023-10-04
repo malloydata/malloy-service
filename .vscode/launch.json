@@ -11,6 +11,13 @@
         "name": "Run and attach to Malloy Service",
         "runtimeExecutable": "npx",
         "runtimeArgs": ["ts-node", "src/server.ts"]
+      },
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Debug third party licenses",
+        "runtimeExecutable": "npx",
+        "runtimeArgs": ["ts-node", "scripts/license-disclaimer.ts"]
       }
     ]
   }
