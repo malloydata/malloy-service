@@ -30,8 +30,8 @@
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.7.1",
-    "@malloydata/malloy": "*",
-    "@malloydata/render": "*",
+    "@malloydata/malloy": "0.0.91",
+    "@malloydata/render": "0.0.91",
     "debug": "^4.3.4",
     "jsdom": "^22.1.0"
   },
