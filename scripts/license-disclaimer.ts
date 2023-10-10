@@ -24,11 +24,17 @@
 import path from 'path';
 import {readPackageJson} from './utils/licenses';
 import fs from 'fs';
+import https from 'https';
+// eslint-disable-next-line node/no-unpublished-import
+import axios from 'axios';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
 let filePath: string;
 let seen: {[id: string]: boolean} = {};
+
+axios.defaults.timeout = 500000;
+axios.defaults.httpsAgent = new https.Agent({keepAlive: true});
 
 /*
  * Required components:
@@ -37,11 +43,11 @@ let seen: {[id: string]: boolean} = {};
  * * The complete text of every unique license (at least once)
  * * The contents of any NOTICE file included with the component (if it includes one)
  */
-export function generateDisclaimer(
+export async function generateDisclaimer(
   packageJsonPath: string,
   nodeModulesPath: string,
   disclaimerPath: string
-): void {
+): Promise<void> {
   filePath = disclaimerPath;
   const rootPackageJson = readPackageJson(packageJsonPath);
 
@@ -57,15 +63,29 @@ export function generateDisclaimer(
   // doesn't have to install dependencies for no good reason, as everything is bundled
   // when shipped to npm. This means that the license file also includes things we don't actually
   // ship, but it's a very short list anyways.
-  doDependencies(nodeModulesPath, rootPackageJson, true);
+  await doDependencies(nodeModulesPath, rootPackageJson, true);
+  const response = await axios.get(
+    'https://github.com/nodejs/node/raw/main/LICENSE'
+  );
+  fs.appendFileSync(
+    filePath,
+    `
+  -------
+  Package: node
+  Url: https://github.com/nodejs/node/blob/main/LICENSE
+  License(s): MIT
+  License Text:
+    ${response.data}
+    `
+  );
   console.log(`  wrote ${filePath}`);
 }
 
-function doDependencies(
+async function doDependencies(
   nodeModulesPath: string,
   packageJson: any,
   includeDevDependencies = false
-): void {
+): Promise<void> {
   // eslint-disable-next-line no-prototype-builtins
 
   // eslint-disable-next-line no-prototype-builtins
@@ -144,7 +164,7 @@ function doDependencies(
         );
 
         seen[dependency] = true;
-        doDependencies(nodeModulesPath, pkg);
+        await doDependencies(nodeModulesPath, pkg);
       } catch (error) {
         console.warn('Could not read package.json', error.message);
       }
