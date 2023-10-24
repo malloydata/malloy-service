@@ -34,6 +34,8 @@ import {
   Result,
   QueryData,
   PreparedResult,
+  LogMessage,
+  PreparedQuery,
 } from '@malloydata/malloy';
 import {HTMLView} from '@malloydata/render';
 // Import from auto-generated file
@@ -170,19 +172,24 @@ class CompilerHandler implements ICompilerServer {
       try {
         const modelMaterializer = runtime.loadModel(modelUrl);
         let preparedResult: PreparedResult | undefined = undefined;
+        let preparedQuery: PreparedQuery | undefined = undefined;
 
         switch (queryType) {
           case 'named':
           case 'query':
             {
+              const model = await modelMaterializer.getModel();
               if (queryType === 'named') {
-                preparedResult = (
-                  await modelMaterializer.getModel()
-                ).getPreparedQueryByName(query).preparedResult;
+                preparedQuery = model.getPreparedQueryByName(query);
+                preparedResult = preparedQuery.preparedResult;
               } else {
-                preparedResult = await modelMaterializer
+                preparedQuery = await modelMaterializer
                   .loadQuery(query)
-                  .getPreparedResult();
+                  .getPreparedQuery();
+                preparedResult = preparedQuery.preparedResult;
+              }
+              for (const problem of preparedQuery.problems) {
+                response.addProblems(JSON.stringify(problem));
               }
               response.setConnection(preparedResult.connectionName);
               response.setContent(preparedResult.sql);
@@ -209,6 +216,9 @@ class CompilerHandler implements ICompilerServer {
           case 'compile':
             {
               const model = await modelMaterializer.getModel();
+              for (const problem of model.problems) {
+                response.addProblems(JSON.stringify(problem));
+              }
               response.setContent(JSON.stringify(model._modelDef));
               response.setType(CompilerRequest.Type.COMPLETE);
             }
@@ -339,6 +349,20 @@ class CompilerHandler implements ICompilerServer {
     return errors;
   }
 
+  private onlyWarnings(messages: LogMessage[]): boolean {
+    for (const message of messages) {
+      if (message.severity !== 'warn') return false;
+    }
+    return true;
+  }
+
+  private getFirstErrorMessage(messages: LogMessage[]): LogMessage | null {
+    for (const message of messages) {
+      if (message.severity === 'error') return message;
+    }
+    return null;
+  }
+
   private mapErrorToResponse(response: CompilerRequest, error: unknown) {
     if (error instanceof MissingReferenceError) {
       response.setType(CompilerRequest.Type.IMPORT);
@@ -347,7 +371,13 @@ class CompilerHandler implements ICompilerServer {
     }
 
     if (error instanceof MalloyError) {
-      const problem = error.problems[0];
+      if (this.onlyWarnings(error.problems)) {
+        return;
+      }
+      const problem = this.getFirstErrorMessage(error.problems);
+      if (problem === null) {
+        return;
+      }
       this.log('mapErrorToResponse', problem.message);
 
       const importRegex = new RegExp(/^import error: mlr:\/\/(.+)$/);

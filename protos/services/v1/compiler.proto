@@ -102,6 +102,7 @@ message CompilerRequest {
   SqlBlock sql_block = 4;
   string connection = 5;
   string render_content = 6;
+  repeated string problems = 7;
   string content = 99;
 }
 
