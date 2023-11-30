@@ -1,3 +1,5 @@
+/* eslint-disable no-process-exit */
+/* eslint-disable no-prototype-builtins */
 /*
  * Copyright 2023 Google LLC
  *
@@ -20,33 +22,29 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
 import * as grpc from '@grpc/grpc-js';
 import CompilerHandler from './services/v1/compiler_handler';
 import path from 'path';
 import fs from 'fs';
+import process from 'node:process';
+import {Command} from 'commander';
+import {Dialect, registerDialect} from '@malloydata/malloy/dist/dialect';
 
-const PORT = process.env.PORT || 14310;
-const HOST = process.env.HOST || '0.0.0.0';
+const command = new Command();
 
-function showThirdPartyRequested(): Boolean {
-  if (process.argv.length <= 2) {
-    return false;
-  }
+command
+  .name('malloy-service')
+  .description('Malloy Stateless Compilation/Rendering gRPC Service')
+  .version('1.0.0')
+  .option('-p, --port <integer>', 'Port for server to listen on')
+  .option('-h, --host <string>', 'Host address server to listen on')
+  .option('--third-party', 'Output third party license information')
+  .option('-d, --dialect <string...>', 'path to dialect definition');
 
-  for (const arg of process.argv) {
-    if (arg === 'third-party') {
-      console.log(
-        fs
-          .readFileSync(path.join(__dirname, 'third_party_notices.txt'))
-          .toString()
-      );
-      return true;
-    }
-  }
+command.parse();
 
-  return false;
-}
+const PORT = command.opts().port || process.env.PORT || 14310;
+const HOST = command.opts().host || process.env.HOST || '0.0.0.0';
 
 export function startServer(listeningPort = PORT): grpc.Server {
   const grpcServer = new grpc.Server();
@@ -79,6 +77,44 @@ process.on('unhandledRejection', ex => {
   console.error(ex);
 });
 
-if (!showThirdPartyRequested()) {
-  startServer();
+if (command.opts().thirdParty) {
+  console.log(
+    fs.readFileSync(path.join(__dirname, 'third_party_notices.txt')).toString()
+  );
+  process.exit();
 }
+
+const dialects = command.opts().dialect;
+if (dialects.length > 0) console.log(`Register dialect(s): ${dialects}`);
+
+const imports: Array<Promise<unknown>> = [];
+for (const dialect of dialects) {
+  console.log(`  Importing: ${dialect}`);
+  imports.push(
+    import(path.join(process.execPath, dialect)).then((thing: unknown) => {
+      if (thing === undefined) {
+        console.error(`  Dialect import undefined: ${dialect}`);
+        return;
+      }
+      if (!(thing instanceof Object)) {
+        console.error(`  Dialect import not an object: ${dialect}`);
+        return;
+      }
+      if (!thing.hasOwnProperty('default')) {
+        console.error(`  Dialect default export not found: ${dialect}`);
+        return;
+      }
+      if (!thing['default'].hasOwnProperty('dialect')) {
+        console.error(
+          `  Dialect default export does not contain "dialect": ${dialect}`
+        );
+        return;
+      }
+      registerDialect(thing['default']['dialect'] as Dialect);
+      console.log(`  Registered: ${dialect}`);
+    })
+  );
+}
+Promise.all(imports).then(_ => {
+  startServer();
+});
