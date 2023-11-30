@@ -3,6 +3,7 @@ node_modules
 dist
 bin
 pkg
+scratch
 tsconfig.tsbuildinfo
 *_pb.d.ts
 *_pb.js
