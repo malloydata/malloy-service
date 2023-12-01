@@ -85,7 +85,8 @@ if (command.opts().thirdParty) {
 }
 
 const dialects = command.opts().dialect;
-if (dialects.length > 0) console.log(`Register dialect(s): ${dialects}`);
+if (dialects !== undefined && dialects.length > 0)
+  console.log(`Register dialect(s): ${dialects}`);
 
 const imports: Array<Promise<unknown>> = [];
 for (const dialect of dialects) {
