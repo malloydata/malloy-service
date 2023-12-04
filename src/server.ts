@@ -84,12 +84,16 @@ if (command.opts().thirdParty) {
   process.exit();
 }
 
+const dialects_to_import: Array<string> = [];
+
 const dialects = command.opts().dialect;
-if (dialects !== undefined && dialects.length > 0)
+if (dialects !== undefined && dialects.length > 0) {
   console.log(`Register dialect(s): ${dialects}`);
+  dialects_to_import.push(...dialects);
+}
 
 const imports: Array<Promise<unknown>> = [];
-for (const dialect of dialects) {
+for (const dialect of dialects_to_import) {
   console.log(`  Importing: ${dialect}`);
   imports.push(
     import(path.join(process.execPath, dialect)).then((thing: unknown) => {
