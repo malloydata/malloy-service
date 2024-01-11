@@ -25,19 +25,14 @@ import * as grpc from '@grpc/grpc-js';
 import fs from 'fs';
 import path from 'path';
 import debug from 'debug';
-import {JSDOM} from 'jsdom';
 import {
   MalloyError,
   Runtime,
   StructDef,
-  ResultJSON,
-  Result,
-  QueryData,
   PreparedResult,
   LogMessage,
   PreparedQuery,
 } from '@malloydata/malloy';
-import {HTMLView} from '@malloydata/render';
 // Import from auto-generated file
 // eslint-disable-next-line node/no-unpublished-import
 import {CompilerService, ICompilerServer} from './compiler_grpc_pb';
@@ -61,6 +56,12 @@ import {
   StreamingCompileURLReader,
 } from './streaming_compile_urlreader';
 
+/**
+ * Malloy Service Compiler - compiles incoming Malloy models and queries.
+ * Compiler will only compile and produce sql's for incoming requests. However,
+ * compiler will return both compiled sql and PreparedResult object so that the
+ * client can use the bundled Malloy Renderer to render the results.
+ */
 class CompilerHandler implements ICompilerServer {
   log = debug('malloydata:compile_handler');
 
@@ -79,10 +80,6 @@ class CompilerHandler implements ICompilerServer {
     let modelUrl: URL | undefined = undefined;
     let query = '';
     let queryType = 'unknown';
-    let rendered = false;
-    let queryData: QueryData | null = null;
-    let totalRows = 0;
-    let serverMode = CompileRequest.Mode.COMPILE_AND_RENDER;
 
     call.on('data', async (request: CompileRequest) => {
       this.log('compile stream data received');
@@ -107,9 +104,6 @@ class CompilerHandler implements ICompilerServer {
             queryType = 'query';
           } else {
             queryType = 'compile';
-          }
-          if (request.getMode() !== undefined) {
-            serverMode = request.getMode();
           }
           urlReader.addDoc(document);
           break;
@@ -149,18 +143,6 @@ class CompilerHandler implements ICompilerServer {
             }
           }
           break;
-        case CompileRequest.Type.RESULTS: {
-          this.log('RESULTS received');
-          const queryResult = request.getQueryResult();
-          if (queryResult) {
-            queryData = JSON.parse(queryResult.getData());
-            totalRows = queryResult.getTotalRows();
-            rendered = true;
-          } else {
-            throw new Error('Missing query result');
-          }
-          break;
-        }
       }
 
       if (modelUrl === undefined) {
@@ -193,24 +175,11 @@ class CompilerHandler implements ICompilerServer {
               }
               response.setConnection(preparedResult.connectionName);
               response.setContent(preparedResult.sql);
-              if (serverMode === CompileRequest.Mode.COMPILE_ONLY) {
-                response.setType(CompilerRequest.Type.COMPLETE);
-              } else if (!rendered) {
-                this.log('Yet to render. Request query execution.');
-                response.setType(CompilerRequest.Type.RUN);
-              } else if (queryData) {
-                this.log('SQL results received. Rendering...');
-                const htmlContent = await this.renderHtml(
-                  queryData,
-                  preparedResult,
-                  totalRows,
-                  urlReader
-                );
-                response.setRenderContent(htmlContent);
-                response.setType(CompilerRequest.Type.COMPLETE);
-              } else {
-                throw new Error('Missing query data');
-              }
+              // Stringify twice to handle the escape characters in the string values.
+              response.setPreparedResult(
+                JSON.stringify(JSON.stringify(preparedResult))
+              );
+              response.setType(CompilerRequest.Type.COMPLETE);
             }
             break;
           case 'compile':
@@ -237,31 +206,6 @@ class CompilerHandler implements ICompilerServer {
       this.log('compile session ended');
     });
   };
-
-  private async renderHtml(
-    queryData: QueryData,
-    preparedResult: PreparedResult,
-    totalRows: number,
-    urlReader: StreamingCompileURLReader
-  ): Promise<string> {
-    const malloyRes: ResultJSON = {
-      queryResult: {
-        ...preparedResult._rawQuery,
-        result: queryData,
-        totalRows: totalRows,
-      },
-      modelDef: preparedResult._modelDef,
-    };
-    const result = Result.fromJSON(malloyRes);
-    const {window} = new JSDOM('<html><head></head><body></body></html>');
-    const {document} = window;
-    const dataStyles = urlReader.getHackyAccumulatedDataStyles();
-    const htmlView = new HTMLView(document).render(result, {
-      dataStyles,
-      isDrillingEnabled: false,
-    });
-    return (await htmlView).outerHTML;
-  }
 
   /**
    * compile
