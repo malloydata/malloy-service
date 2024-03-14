@@ -28,7 +28,7 @@ import path from 'path';
 import fs from 'fs';
 import process from 'node:process';
 import {Command} from 'commander';
-import {Dialect, registerDialect} from '@malloydata/malloy/dist/dialect';
+import {Dialect, registerDialect} from '@malloydata/malloy';
 
 const command = new Command();
 
