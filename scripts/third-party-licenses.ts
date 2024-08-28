@@ -32,11 +32,11 @@
  */
 
 import {execSync} from 'child_process';
-// eslint-disable-next-line node/no-unpublished-import
+// eslint-disable-next-line n/no-unpublished-import
 import axios from 'axios';
 import https from 'https';
 import fs from 'fs';
-// eslint-disable-next-line node/no-unpublished-import
+// eslint-disable-next-line n/no-unpublished-import
 import {stringify} from 'csv-stringify';
 import {readPackageJson} from './utils/licenses';
 import path from 'path';

@@ -34,7 +34,7 @@ import {
   PreparedQuery,
 } from '@malloydata/malloy';
 // Import from auto-generated file
-// eslint-disable-next-line node/no-unpublished-import
+// eslint-disable-next-line n/no-unpublished-import
 import {CompilerService, ICompilerServer} from './compiler_grpc_pb';
 import {
   CompileRequest,
@@ -45,7 +45,7 @@ import {
   ThirdPartyRequest,
   ThirdPartyResponse,
   // Import from auto-generated file
-  // eslint-disable-next-line node/no-unpublished-import
+  // eslint-disable-next-line
 } from './compiler_pb';
 
 import {CompilerRuntime} from './compiler_runtime';

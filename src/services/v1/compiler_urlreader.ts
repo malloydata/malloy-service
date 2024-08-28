@@ -25,7 +25,7 @@ import debug from 'debug';
 import {URLReader} from '@malloydata/malloy';
 
 // Import from auto-generated file
-// eslint-disable-next-line node/no-unpublished-import
+// eslint-disable-next-line n/no-unpublished-import
 import {CompileRequest} from './compiler_pb';
 
 export class CompilerURLReader implements URLReader {

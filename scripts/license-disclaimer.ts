@@ -25,7 +25,7 @@ import path from 'path';
 import {readPackageJson} from './utils/licenses';
 import fs from 'fs';
 import https from 'https';
-// eslint-disable-next-line node/no-unpublished-import
+// eslint-disable-next-line n/no-unpublished-import
 import axios from 'axios';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

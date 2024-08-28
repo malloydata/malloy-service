@@ -132,7 +132,7 @@ export class StreamingCompileConnection implements Connection {
     return {};
   }
 
-  async fetchTableMetadata(tablePath: string) {
+  async fetchTableMetadata(_: string) {
     return {};
   }
 }
