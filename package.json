@@ -47,7 +47,7 @@
     "grpc-tools": "^1.11.2",
     "gts": "^5.0.1",
     "jest": "^29.0.3",
-    "pkg": "^5.8.0",
+    "pkg": "^5.8.1",
     "typescript": "^5.1.6"
   },
   "engines": {
@@ -55,7 +55,10 @@
   },
   "pkg": {
     "compress": "GZip",
-    "scripts": "./dist/**/*.js",
+    "scripts": [
+      "./dist/**/*.js",
+      "./node_modules/@malloydata/malloy/**/*.js"
+    ],
     "assets": "dist/**/*.txt",
     "targets": [
       "node18-linux-x64",
