@@ -28,18 +28,21 @@ import {
   QueryRunStats,
   SQLBlock,
   StructDef,
-  PersistSQLResults,
-  PooledConnection,
-  StreamingConnection,
 } from '@malloydata/malloy';
+import {BaseConnection} from '@malloydata/malloy/connection';
 
-export class StreamingCompileConnection implements Connection {
+export class StreamingCompileConnection
+  extends BaseConnection
+  implements Connection
+{
   private table_schema_cache = new Map<string, StructDef>();
   private sql_block_cache = new Map<string, StructDef>();
 
   private log = debug('malloydata:streamimg_compile_connection');
 
-  constructor(public readonly name: string) {}
+  constructor(public readonly name: string) {
+    super();
+  }
 
   get dialectName(): string {
     throw new Error('Method not implemented.');
@@ -73,18 +76,6 @@ export class StreamingCompileConnection implements Connection {
     this.log('ERROR: runSQL() called.');
     throw new Error('Method not implemented.');
   };
-
-  isPool(): this is PooledConnection {
-    return false;
-  }
-
-  canPersist(): this is PersistSQLResults {
-    return false;
-  }
-
-  canStream(): this is StreamingConnection {
-    return false;
-  }
 
   canFetchSchemaAndRunSimultaneously = async (): Promise<Boolean> => false;
 
@@ -127,12 +118,4 @@ export class StreamingCompileConnection implements Connection {
   }
 
   async close(): Promise<void> {}
-
-  async fetchMetadata() {
-    return {};
-  }
-
-  async fetchTableMetadata(_: string) {
-    return {};
-  }
 }

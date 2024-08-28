@@ -29,16 +29,15 @@ import {
   SQLBlock,
   StructDef,
   QueryRunStats,
-  PooledConnection,
-  PersistSQLResults,
-  StreamingConnection,
 } from '@malloydata/malloy';
+import {BaseConnection} from '@malloydata/malloy/connection';
 
 // Import from auto-generated file
 // eslint-disable-next-line n/no-unpublished-import
 import {CompileRequest} from './compiler_pb';
 
 export class CompilerRuntime
+  extends BaseConnection
   implements LookupConnection<Connection>, Connection
 {
   readonly name = 'compiler_runtime';
@@ -48,6 +47,7 @@ export class CompilerRuntime
   private log = debug('malloydata:compiler_runtime');
 
   constructor(private request: CompileRequest) {
+    super();
     try {
       this.schemas = JSON.parse(this.request.getSchema())['schemas'] as Record<
         string,
@@ -80,18 +80,6 @@ export class CompilerRuntime
     this.log('ERROR: runSQL() called.');
     throw new Error('Method not implemented.');
   };
-
-  isPool(): this is PooledConnection {
-    return false;
-  }
-
-  canPersist(): this is PersistSQLResults {
-    return false;
-  }
-
-  canStream(): this is StreamingConnection {
-    return false;
-  }
 
   canFetchSchemaAndRunSimultaneously = async (): Promise<Boolean> => false;
 
@@ -127,12 +115,4 @@ export class CompilerRuntime
   }
 
   async close(): Promise<void> {}
-
-  async fetchMetadata() {
-    return {};
-  }
-
-  async fetchTableMetadata(_tablePath: string) {
-    return {};
-  }
 }
