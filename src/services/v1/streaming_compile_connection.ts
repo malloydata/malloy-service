@@ -28,6 +28,9 @@ import {
   QueryRunStats,
   SQLBlock,
   StructDef,
+  PersistSQLResults,
+  PooledConnection,
+  StreamingConnection,
 } from '@malloydata/malloy';
 
 export class StreamingCompileConnection implements Connection {
@@ -71,13 +74,19 @@ export class StreamingCompileConnection implements Connection {
     throw new Error('Method not implemented.');
   };
 
-  isPool = async (): Promise<Boolean> => false;
+  isPool(): this is PooledConnection {
+    return false;
+  }
 
-  canPersist = async (): Promise<Boolean> => false;
+  canPersist(): this is PersistSQLResults {
+    return false;
+  }
+
+  canStream(): this is StreamingConnection {
+    return false;
+  }
 
   canFetchSchemaAndRunSimultaneously = async (): Promise<Boolean> => false;
-
-  canStream = async (): Promise<Boolean> => false;
 
   canFetchSchemaAndRunStreamSimultaneously = async (): Promise<Boolean> =>
     false;
@@ -93,9 +102,8 @@ export class StreamingCompileConnection implements Connection {
     for (const tableKey in tables) {
       const schema = this.table_schema_cache.get(tableKey);
       if (schema === undefined) {
-        result.errors[
-          tableKey
-        ] = `No schema data available for {${tableKey}} {${this.name}} {${tables[tableKey]}}`;
+        result.errors[tableKey] =
+          `No schema data available for {${tableKey}} {${this.name}} {${tables[tableKey]}}`;
       } else {
         result.schemas[tableKey] = schema;
       }
@@ -119,4 +127,12 @@ export class StreamingCompileConnection implements Connection {
   }
 
   async close(): Promise<void> {}
+
+  async fetchMetadata() {
+    return {};
+  }
+
+  async fetchTableMetadata(tablePath: string) {
+    return {};
+  }
 }

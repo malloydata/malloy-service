@@ -29,6 +29,9 @@ import {
   SQLBlock,
   StructDef,
   QueryRunStats,
+  PooledConnection,
+  PersistSQLResults,
+  StreamingConnection,
 } from '@malloydata/malloy';
 
 // Import from auto-generated file
@@ -78,13 +81,19 @@ export class CompilerRuntime
     throw new Error('Method not implemented.');
   };
 
-  isPool = async (): Promise<Boolean> => false;
+  isPool(): this is PooledConnection {
+    return false;
+  }
 
-  canPersist = async (): Promise<Boolean> => false;
+  canPersist(): this is PersistSQLResults {
+    return false;
+  }
+
+  canStream(): this is StreamingConnection {
+    return false;
+  }
 
   canFetchSchemaAndRunSimultaneously = async (): Promise<Boolean> => false;
-
-  canStream = async (): Promise<Boolean> => false;
 
   canFetchSchemaAndRunStreamSimultaneously = async (): Promise<Boolean> =>
     false;
@@ -118,4 +127,12 @@ export class CompilerRuntime
   }
 
   async close(): Promise<void> {}
+
+  async fetchMetadata() {
+    return {};
+  }
+
+  async fetchTableMetadata(_tablePath: string) {
+    return {};
+  }
 }
