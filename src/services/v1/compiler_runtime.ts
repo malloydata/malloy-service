@@ -30,12 +30,14 @@ import {
   StructDef,
   QueryRunStats,
 } from '@malloydata/malloy';
+import {BaseConnection} from '@malloydata/malloy/connection';
 
 // Import from auto-generated file
-// eslint-disable-next-line node/no-unpublished-import
+// eslint-disable-next-line n/no-unpublished-import
 import {CompileRequest} from './compiler_pb';
 
 export class CompilerRuntime
+  extends BaseConnection
   implements LookupConnection<Connection>, Connection
 {
   readonly name = 'compiler_runtime';
@@ -45,6 +47,7 @@ export class CompilerRuntime
   private log = debug('malloydata:compiler_runtime');
 
   constructor(private request: CompileRequest) {
+    super();
     try {
       this.schemas = JSON.parse(this.request.getSchema())['schemas'] as Record<
         string,
@@ -78,13 +81,7 @@ export class CompilerRuntime
     throw new Error('Method not implemented.');
   };
 
-  isPool = async (): Promise<Boolean> => false;
-
-  canPersist = async (): Promise<Boolean> => false;
-
   canFetchSchemaAndRunSimultaneously = async (): Promise<Boolean> => false;
-
-  canStream = async (): Promise<Boolean> => false;
 
   canFetchSchemaAndRunStreamSimultaneously = async (): Promise<Boolean> =>
     false;

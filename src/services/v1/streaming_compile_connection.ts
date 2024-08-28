@@ -29,14 +29,20 @@ import {
   SQLBlock,
   StructDef,
 } from '@malloydata/malloy';
+import {BaseConnection} from '@malloydata/malloy/connection';
 
-export class StreamingCompileConnection implements Connection {
+export class StreamingCompileConnection
+  extends BaseConnection
+  implements Connection
+{
   private table_schema_cache = new Map<string, StructDef>();
   private sql_block_cache = new Map<string, StructDef>();
 
   private log = debug('malloydata:streamimg_compile_connection');
 
-  constructor(public readonly name: string) {}
+  constructor(public readonly name: string) {
+    super();
+  }
 
   get dialectName(): string {
     throw new Error('Method not implemented.');
@@ -71,13 +77,7 @@ export class StreamingCompileConnection implements Connection {
     throw new Error('Method not implemented.');
   };
 
-  isPool = async (): Promise<Boolean> => false;
-
-  canPersist = async (): Promise<Boolean> => false;
-
   canFetchSchemaAndRunSimultaneously = async (): Promise<Boolean> => false;
-
-  canStream = async (): Promise<Boolean> => false;
 
   canFetchSchemaAndRunStreamSimultaneously = async (): Promise<Boolean> =>
     false;
@@ -93,9 +93,8 @@ export class StreamingCompileConnection implements Connection {
     for (const tableKey in tables) {
       const schema = this.table_schema_cache.get(tableKey);
       if (schema === undefined) {
-        result.errors[
-          tableKey
-        ] = `No schema data available for {${tableKey}} {${this.name}} {${tables[tableKey]}}`;
+        result.errors[tableKey] =
+          `No schema data available for {${tableKey}} {${this.name}} {${tables[tableKey]}}`;
       } else {
         result.schemas[tableKey] = schema;
       }

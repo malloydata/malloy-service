@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.7.1",
-    "@malloydata/malloy": "0.0.137",
+    "@malloydata/malloy": "0.0.176",
     "commander": "^11.1.0",
     "debug": "^4.3.4"
   },
@@ -51,7 +51,7 @@
     "typescript": "^5.1.6"
   },
   "engines": {
-    "node": ">=10.0.0"
+    "node": ">=14.14.0"
   },
   "pkg": {
     "compress": "GZip",

@@ -81,6 +81,7 @@ if (command.opts().thirdParty) {
   console.log(
     fs.readFileSync(path.join(__dirname, 'third_party_notices.txt')).toString()
   );
+  // eslint-disable-next-line n/no-process-exit
   process.exit();
 }
 
