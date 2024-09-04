@@ -17,9 +17,10 @@
     "protos-gen-js": "npx grpc_tools_node_protoc --js_out=import_style=commonjs,binary:dist --grpc_out=grpc_js:dist -I protos protos/**/**/*.proto",
     "protos-gen-js-src": "npx grpc_tools_node_protoc --js_out=import_style=commonjs,binary:src --grpc_out=grpc_js:src -I protos protos/**/**/*.proto",
     "protos-gen-ts": "npx grpc_tools_node_protoc --plugin=protoc-gen-ts=$(pwd)/node_modules/.bin/protoc-gen-ts --ts_out=src -I protos protos/**/**/*.proto",
-    "malloy-update": "npm install  --no-fund --no-audit --save-exact $(echo $npm_package_config_malloy_packages | sed -E 's/(@malloydata\\/[-a-z]+)/\\1@latest/g')",
-    "malloy-link": "npm --no-fund --no-audit link $npm_package_config_malloy_packages",
-    "malloy-unlink": "npm --no-fund --no-save --no-audit unlink $npm_package_config_malloy_packages && npm --no-fund --no-audit install --force",
+    "malloy-update-next": "npm install  --no-fund --no-audit --save-exact $(./scripts/malloy-packages.js next)",
+    "malloy-update": "npm install  --no-fund --no-audit --save-exact $(./scripts/malloy-packages.js latest)",
+    "malloy-link": "npm --no-fund --no-audit link $(./scripts/malloy-packages.js)",
+    "malloy-unlink": "npm --no-fund --no-save --no-audit unlink $(./scripts/malloy-packages.js) && npm --no-fund --no-audit install --force",
     "lint": "gts lint",
     "clean": "gts clean",
     "compile": "npm run build",
@@ -27,6 +28,9 @@
     "prepare": "npm run compile",
     "pretest": "npm run compile",
     "posttest": "npm run lint"
+  },
+  "bin": {
+    "malloy-packages": "./scripts/malloy-packages.js"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.7.1",
