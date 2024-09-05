@@ -96,8 +96,11 @@ if (dialects !== undefined && dialects.length > 0) {
 const imports: Array<Promise<unknown>> = [];
 for (const dialect of dialects_to_import) {
   console.log(`  Importing: ${dialect}`);
+  const dialect_path = dialect.startsWith('/')
+    ? dialect
+    : path.join(process.execPath, dialect);
   imports.push(
-    import(path.join(process.execPath, dialect)).then((thing: unknown) => {
+    import(dialect_path).then((thing: unknown) => {
       if (thing === undefined) {
         console.error(`  Dialect import undefined: ${dialect}`);
         return;
